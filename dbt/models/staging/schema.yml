@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: base_vaastav__rows
+    description: vaastav rows from the latest ingested commit per season.
+  - name: stg_vaastav__player_gameweeks
+    description: Typed merged_gw.csv rows. One row per player per fixture.
+    columns:
+      - name: season
+        tests: [not_null]
+      - name: element_id
+        tests: [not_null]
+      - name: gw
+        tests: [not_null]
+      - name: total_points
+        tests: [not_null]
+      - name: as_of
+        description: kickoff_time plus match_settle_interval (UTC).
+        tests: [not_null]
+  - name: stg_vaastav__fixtures
+    columns:
+      - name: fixture_id
+        tests: [not_null]
+  - name: stg_vaastav__teams
+    columns:
+      - name: team_id
+        tests: [not_null]
+  - name: stg_vaastav__players
+    description: Identity columns from players_raw.csv. No prices, totals or news.
+    columns:
+      - name: element_id
+        tests: [not_null]
+  - name: stg_fpl__events
+    columns:
+      - name: gw
+        tests: [not_null]
+      - name: deadline_time
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
+  - name: stg_fpl__elements
+    columns:
+      - name: element_id
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
+  - name: stg_fpl__teams
+    columns:
+      - name: team_id
+        tests: [not_null]
+  - name: stg_fpl__fixtures
+    columns:
+      - name: fixture_id
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
