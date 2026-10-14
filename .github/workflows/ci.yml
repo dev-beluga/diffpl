@@ -33,6 +33,13 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest
+      - name: dbt build (empty raw tables)
+        env:
+          DIFFPL_DATABASE_URL: postgresql+psycopg://diffpl:diffpl@localhost:5432/diffpl
+        run: |
+          PGPASSWORD=diffpl psql -h localhost -U diffpl -c "create schema if not exists raw"
+          uv run python -c "from sqlalchemy import create_engine; from diffpl.ingest.store import create_tables; from diffpl.settings import get_settings; create_tables(create_engine(get_settings().database_url))"
+          uv run dbt build --project-dir dbt --profiles-dir dbt
 
   compose:
     runs-on: ubuntu-latest
