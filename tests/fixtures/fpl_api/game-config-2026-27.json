@@ -1,0 +1,372 @@
+{
+    "chips": [
+        {
+            "id": 1,
+            "name": "wildcard",
+            "number": 1,
+            "chip_type": "transfer",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 19,
+            "start_event": 2
+        },
+        {
+            "id": 2,
+            "name": "wildcard",
+            "number": 1,
+            "chip_type": "transfer",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 38,
+            "start_event": 20
+        },
+        {
+            "id": 3,
+            "name": "freehit",
+            "number": 1,
+            "chip_type": "transfer",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 19,
+            "start_event": 2
+        },
+        {
+            "id": 4,
+            "name": "bboost",
+            "number": 1,
+            "chip_type": "team",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 19,
+            "start_event": 1
+        },
+        {
+            "id": 5,
+            "name": "3xc",
+            "number": 1,
+            "chip_type": "team",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 19,
+            "start_event": 1
+        },
+        {
+            "id": 6,
+            "name": "freehit",
+            "number": 1,
+            "chip_type": "transfer",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 38,
+            "start_event": 20
+        },
+        {
+            "id": 7,
+            "name": "bboost",
+            "number": 1,
+            "chip_type": "team",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 38,
+            "start_event": 20
+        },
+        {
+            "id": 8,
+            "name": "3xc",
+            "number": 1,
+            "chip_type": "team",
+            "overrides": {
+                "rules": {
+                },
+                "scoring": {
+                },
+                "element_types": [
+                ],
+                "pick_multiplier": null
+            },
+            "stop_event": 38,
+            "start_event": 20
+        }
+    ],
+    "fetched_at": "2026-10-14T23:45:29.816428+00:00",
+    "game_config": {
+        "rules": {
+            "cup_type": null,
+            "transfers_cap": 20,
+            "squad_squadplay": 11,
+            "squad_squadsize": 15,
+            "stats_form_days": 30,
+            "featured_entries": [
+            ],
+            "percentile_ranks": [
+                1,
+                5,
+                10,
+                15,
+                20,
+                25,
+                30,
+                35,
+                40,
+                45,
+                50,
+                55,
+                60,
+                65,
+                70,
+                75,
+                80,
+                85,
+                90,
+                95
+            ],
+            "squad_team_limit": 3,
+            "cup_stop_event_id": null,
+            "squad_special_max": null,
+            "squad_special_min": null,
+            "squad_total_spend": 1000,
+            "cup_start_event_id": null,
+            "league_prefix_public": "League",
+            "cup_qualifying_method": null,
+            "league_points_h2h_win": 3,
+            "transfers_sell_on_fee": 0.5,
+            "ui_use_special_shirts": false,
+            "underdog_differential": 5,
+            "league_join_public_max": 5,
+            "league_points_h2h_draw": 1,
+            "league_points_h2h_lose": 0,
+            "ui_currency_multiplier": 10,
+            "league_join_private_max": 30,
+            "max_extra_free_transfers": 4,
+            "sys_vice_captain_enabled": true,
+            "league_h2h_tiebreak_stats": [
+                "+goals_scored",
+                "-goals_conceded"
+            ],
+            "league_max_size_public_h2h": 20,
+            "league_max_size_private_h2h": 16,
+            "ui_special_shirt_exclusions": [
+            ],
+            "element_sell_at_purchase_price": false,
+            "league_max_size_public_classic": 20,
+            "league_max_ko_rounds_private_h2h": 3,
+            "league_ko_first_instead_of_random": false
+        },
+        "status": {
+            "price_change_last_updated": "2026-10-14T23:35:14.847411Z"
+        },
+        "scoring": {
+            "bps": 0,
+            "bonus": 1,
+            "saves": 1,
+            "starts": 0,
+            "threat": 0,
+            "assists": 3,
+            "mng_win": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "tackles": 0,
+            "mng_draw": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "mng_loss": 0,
+            "ict_index": 0,
+            "influence": 0,
+            "long_play": 2,
+            "own_goals": -2,
+            "red_cards": -3,
+            "creativity": 0,
+            "recoveries": 0,
+            "short_play": 1,
+            "clean_sheets": {
+                "DEF": 4,
+                "FWD": 0,
+                "GKP": 4,
+                "MID": 1
+            },
+            "goals_scored": {
+                "DEF": 6,
+                "FWD": 4,
+                "GKP": 10,
+                "MID": 5
+            },
+            "yellow_cards": -1,
+            "expected_goals": 0,
+            "goals_conceded": {
+                "DEF": -1,
+                "FWD": 0,
+                "GKP": -1,
+                "MID": 0
+            },
+            "penalties_saved": 5,
+            "expected_assists": 0,
+            "mng_clean_sheets": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "mng_goals_scored": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "mng_underdog_win": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "penalties_missed": -2,
+            "mng_underdog_draw": {
+                "DEF": 0,
+                "FWD": 0,
+                "GKP": 0,
+                "MID": 0
+            },
+            "special_multiplier": 1,
+            "defensive_contribution": {
+                "DEF": 2,
+                "FWD": 2,
+                "GKP": 0,
+                "MID": 2
+            },
+            "expected_goals_conceded": 0,
+            "expected_goal_involvements": 0,
+            "clearances_blocks_interceptions": 0
+        },
+        "settings": {
+            "timezone": "UTC",
+            "entry_per_event": false,
+            "static_content_url": "https://fantasy.premierleague.com/gcs/plfpl-prod-static-content/plfpl-production/2026_27/",
+            "price_change_deadlines": [
+                "2026-10-15T23:00:00Z",
+                "2026-10-16T23:00:00Z",
+                "2026-10-17T23:00:00Z"
+            ]
+        }
+    },
+    "element_types": [
+        {
+            "id": 1,
+            "plural_name": "Goalkeepers",
+            "squad_select": 2,
+            "element_count": 73,
+            "singular_name": "Goalkeeper",
+            "squad_max_play": 1,
+            "squad_min_play": 1,
+            "squad_max_select": null,
+            "squad_min_select": null,
+            "plural_name_short": "GKP",
+            "ui_shirt_specific": true,
+            "singular_name_short": "GKP",
+            "sub_positions_locked": [
+                12
+            ]
+        },
+        {
+            "id": 2,
+            "plural_name": "Defenders",
+            "squad_select": 5,
+            "element_count": 217,
+            "singular_name": "Defender",
+            "squad_max_play": 5,
+            "squad_min_play": 3,
+            "squad_max_select": null,
+            "squad_min_select": null,
+            "plural_name_short": "DEF",
+            "ui_shirt_specific": false,
+            "singular_name_short": "DEF",
+            "sub_positions_locked": [
+            ]
+        },
+        {
+            "id": 3,
+            "plural_name": "Midfielders",
+            "squad_select": 5,
+            "element_count": 298,
+            "singular_name": "Midfielder",
+            "squad_max_play": 5,
+            "squad_min_play": 2,
+            "squad_max_select": null,
+            "squad_min_select": null,
+            "plural_name_short": "MID",
+            "ui_shirt_specific": false,
+            "singular_name_short": "MID",
+            "sub_positions_locked": [
+            ]
+        },
+        {
+            "id": 4,
+            "plural_name": "Forwards",
+            "squad_select": 3,
+            "element_count": 79,
+            "singular_name": "Forward",
+            "squad_max_play": 3,
+            "squad_min_play": 1,
+            "squad_max_select": null,
+            "squad_min_select": null,
+            "plural_name_short": "FWD",
+            "ui_shirt_specific": false,
+            "singular_name_short": "FWD",
+            "sub_positions_locked": [
+            ]
+        }
+    ]
+}

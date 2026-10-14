@@ -1,0 +1,68 @@
+# FPL rules for 2026/27.
+# Sources:
+#   api: bootstrap-static game_config (fetched 2026-10-15). tests/test_rules.py checks these
+#        values against a recorded payload.
+#   pl:  premierleague.com/en/news/4679946 (2026/27 BPS changes).
+#   carried: unchanged from 2025/26 and not exposed by the API.
+season: "2026-27"
+
+squad:                       # api
+  size: 15
+  starting: 11
+  budget_tenths: 1000
+  max_per_team: 3
+  positions:
+    GKP: {select: 2, min_play: 1, max_play: 1}
+    DEF: {select: 5, min_play: 3, max_play: 5}
+    MID: {select: 5, min_play: 2, max_play: 5}
+    FWD: {select: 3, min_play: 1, max_play: 3}
+
+transfers:
+  free_per_gw: 1             # carried
+  max_banked: 5              # api: max_extra_free_transfers 4, plus the weekly one
+  hit_cost: 4                # carried
+  sell_on_fee: 0.5           # api: half of any price rise, rounded down to 0.1m
+
+chips:                       # api: one of each per half; Assistant Manager removed
+  - {name: wildcard, start_gw: 2, end_gw: 19}
+  - {name: wildcard, start_gw: 20, end_gw: 38}
+  - {name: freehit, start_gw: 2, end_gw: 19}
+  - {name: freehit, start_gw: 20, end_gw: 38}
+  - {name: bboost, start_gw: 1, end_gw: 19}
+  - {name: bboost, start_gw: 20, end_gw: 38}
+  - {name: 3xc, start_gw: 1, end_gw: 19}
+  - {name: 3xc, start_gw: 20, end_gw: 38}
+
+scoring:
+  minutes:
+    short_play: 1            # api: 1-59 minutes
+    long_play: 2             # api: 60+ minutes
+    long_play_threshold: 60  # carried
+  goals_scored: {GKP: 10, DEF: 6, MID: 5, FWD: 4}       # api
+  assists: 3                                              # api
+  clean_sheets: {GKP: 4, DEF: 4, MID: 1, FWD: 0}        # api; needs 60+ minutes (carried)
+  goals_conceded: {GKP: -1, DEF: -1, MID: 0, FWD: 0}    # api; per goals_conceded_per
+  goals_conceded_per: 2                                   # carried
+  saves: 1                                                # api; per saves_per
+  saves_per: 3                                            # carried
+  penalties_saved: 5                                      # api
+  penalties_missed: -2                                    # api
+  yellow_cards: -1                                        # api
+  red_cards: -3                                           # api
+  own_goals: -2                                           # api
+  bonus_by_rank: [3, 2, 1]                                # carried; ties share the rank
+  defensive_contribution:
+    points: {GKP: 0, DEF: 2, MID: 2, FWD: 2}             # api
+    # carried: DEF count clearances, blocks, interceptions, tackles (CBIT);
+    # MID and FWD also count recoveries (CBIRT).
+    threshold: {DEF: 10, MID: 12, FWD: 12}
+
+# Only the 2026/27 BPS changes are encoded. The full BPS table is not published in a
+# machine-readable form; complete it from the official rules before computing BPS.
+bps_changes:                 # pl
+  tackled: 0                 # was -1
+  cbi_per_point: 3           # was 2
+  gk_save: 2                 # any save; save-outside-box metric removed
+  gk_save_inside_box_extra: 1
+  gk_save_big_chance_extra: 1
+  penalty_save: 7            # was 8; plus big-chance extra makes 8
