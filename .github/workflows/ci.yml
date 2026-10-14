@@ -8,6 +8,22 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: diffpl
+          POSTGRES_PASSWORD: diffpl
+          POSTGRES_DB: diffpl
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U diffpl"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DIFFPL_TEST_DATABASE_URL: postgresql+psycopg://diffpl:diffpl@localhost:5432/diffpl
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
