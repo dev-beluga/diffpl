@@ -1,0 +1,7 @@
+{"events": [{"id": 1, "deadline_time": "2026-08-14T17:30:00Z", "finished": false}],
+ "teams": [{"id": 1, "name": "Arsenal", "short_name": "ARS"}],
+ "element_types": [{"id": 1, "singular_name_short": "GKP"}],
+ "elements": [
+   {"id": 1, "web_name": "Raya", "team": 1, "element_type": 1, "now_cost": 55},
+   {"id": 2, "web_name": "Saka", "team": 1, "element_type": 3, "now_cost": 100}
+ ]}

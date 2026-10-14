@@ -34,7 +34,9 @@ class Fetched:
 
 
 class FetchError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class CachedFetcher:
@@ -127,6 +129,8 @@ class CachedFetcher:
                 if response.status_code == 200:
                     return Fetched(url, 200, response.content, self._clock(), from_cache=False)
                 if response.status_code not in RETRY_STATUSES or attempt == self.max_retries:
-                    raise FetchError(f"GET {url} returned {response.status_code}")
+                    raise FetchError(
+                        f"GET {url} returned {response.status_code}", response.status_code
+                    )
             self._sleep(2.0**attempt)
         raise AssertionError("unreachable")
