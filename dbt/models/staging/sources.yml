@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: fpl_api_responses
+        description: Whole FPL API payloads, append-only, one row per (url, payload hash).
+        loaded_at_field: fetched_at
+        freshness:
+          warn_after: {count: 36, period: hour}
+          error_after: {count: 72, period: hour}
+      - name: vaastav_rows
+        description: vaastav CSV rows as JSON objects of strings, pinned to a commit.

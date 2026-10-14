@@ -1,0 +1,12 @@
+diffpl:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DIFFPL_PG_HOST', 'localhost') }}"
+      port: "{{ env_var('DIFFPL_PG_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'diffpl') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'diffpl') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'diffpl') }}"
+      schema: public
+      threads: 4

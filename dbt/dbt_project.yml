@@ -1,0 +1,21 @@
+name: diffpl
+version: "0.1.0"
+config-version: 2
+profile: diffpl
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: target
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Bonus is confirmed about an hour after a match day ends. A GW row is treated as known
+  # this long after kickoff. Replay still filters on as_of < deadline.
+  match_settle_interval: "3 hours"
+
+models:
+  diffpl:
+    staging:
+      +schema: staging
+      +materialized: view
