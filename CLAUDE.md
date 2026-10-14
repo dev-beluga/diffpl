@@ -177,4 +177,7 @@ Phase 0.
 
 ## Commands
 
-(Add as they exist: setup, ingest, dbt run, tests, evals, replay, serve.)
+- Setup: `uv sync && cp .env.example .env && docker compose up -d`
+- Ingest: `uv run python -m diffpl.ingest fpl` and `uv run python -m diffpl.ingest vaastav --season 2024-25`
+- Tests: `uv run pytest` (set `DIFFPL_TEST_DATABASE_URL` to include Postgres tests)
+- (Add as they exist: dbt run, evals, replay, serve.)
