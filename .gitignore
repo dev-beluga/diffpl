@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+data/
+mlruns/
+dbt/target/
+dbt/logs/
+.ipynb_checkpoints/
