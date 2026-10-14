@@ -180,4 +180,5 @@ Phase 0.
 - Setup: `uv sync && cp .env.example .env && docker compose up -d`
 - Ingest: `uv run python -m diffpl.ingest fpl` and `uv run python -m diffpl.ingest vaastav --season 2024-25`
 - Tests: `uv run pytest` (set `DIFFPL_TEST_DATABASE_URL` to include Postgres tests)
-- (Add as they exist: dbt run, evals, replay, serve.)
+- dbt: `uv run dbt build --project-dir dbt --profiles-dir dbt`
+- (Add as they exist: evals, replay, serve.)

@@ -23,3 +23,4 @@
 - Older seasons use `First_Last_id` style player names in `merged_gw.csv`.
 - Advanced stats (xG, xA) appear in `merged_gw.csv` from 2022-23. No other xG source is used
   until its terms are checked.
+- vaastav `fixtures.csv` difficulty ratings are end-of-season values, not point-in-time.
