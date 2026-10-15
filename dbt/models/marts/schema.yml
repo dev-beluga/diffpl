@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: fct_player_gameweeks
+    description: >
+      Historical player points per gameweek, double gameweeks summed. Grain: season, gw,
+      element_id. Replay and features filter on as_of < deadline.
+    columns:
+      - name: season
+        tests: [not_null]
+      - name: gw
+        tests: [not_null]
+      - name: element_id
+        tests: [not_null]
+      - name: position
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["GKP", "DEF", "MID", "FWD", "AM"]
+      - name: fixtures
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
