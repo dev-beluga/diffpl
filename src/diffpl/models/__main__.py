@@ -120,15 +120,40 @@ def train_cmd(use_mlflow: bool) -> None:
     print("\nlogged to MLflow experiment 'projections'")
 
 
+def replay_cmd() -> None:
+    """Replay the test seasons: model-driven manager vs the heuristic baselines."""
+    from diffpl.models.manager import model_manager
+    from diffpl.replay.baselines import make_baseline
+    from diffpl.replay.run import run_season
+    from diffpl.rules import load_rules
+
+    engine = create_engine(get_settings().database_url)
+    train = pl.concat([season_table(load_season(engine, s)) for s in TRAIN])
+    valid = pl.concat([season_table(load_season(engine, s)) for s in VALID])
+    model = TwoPartModel(seed=get_settings().seed).fit(train, valid)
+    for season in TEST:
+        data, rules = load_season(engine, season), load_rules(season)
+        managers = [make_baseline(b, rules) for b in ("template", "form", "fixtures")]
+        for m in [model_manager("two_part", model, rules), *managers]:
+            r = run_season(data, rules, m).summary()
+            print(
+                f"{season}  {r['manager']:<9} {r['total_points']:>5} pts  "
+                f"violations {r['violations']}"
+            )
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m diffpl.models")
     sub = parser.add_subparsers(dest="cmd", required=True)
     tr = sub.add_parser("train", help="train two-part model and evaluate on test seasons")
     tr.add_argument("--no-mlflow", action="store_true")
+    sub.add_parser("replay", help="replay test seasons with the model as a manager")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     if args.cmd == "train":
         train_cmd(use_mlflow=not args.no_mlflow)
+    elif args.cmd == "replay":
+        replay_cmd()
 
 
 if __name__ == "__main__":

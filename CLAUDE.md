@@ -183,4 +183,6 @@ Phase 0.
 - dbt: `uv run dbt build --project-dir dbt --profiles-dir dbt`
 - Leagues: `uv run python -m diffpl.ingest league --id <league_id>` then `uv run python -m diffpl.leagues --id <league_id> --entry <team_id>`; rules in `config/leagues/<league_id>.yaml`
 - Replay: `uv run python -m diffpl.replay --season 2024-25 [--manager form]`
+- Models: `uv run python -m diffpl.models train` (MLflow) and `uv run python -m diffpl.models replay`
+- Dashboard: `uv run streamlit run src/diffpl/ui/app.py`
 - (Add as they exist: evals, serve.)
