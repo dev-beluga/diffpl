@@ -181,4 +181,5 @@ Phase 0.
 - Ingest: `uv run python -m diffpl.ingest fpl` and `uv run python -m diffpl.ingest vaastav --season 2024-25`
 - Tests: `uv run pytest` (set `DIFFPL_TEST_DATABASE_URL` to include Postgres tests)
 - dbt: `uv run dbt build --project-dir dbt --profiles-dir dbt`
-- (Add as they exist: evals, replay, serve.)
+- Replay: `uv run python -m diffpl.replay --season 2024-25 [--manager form]`
+- (Add as they exist: evals, serve.)
