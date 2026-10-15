@@ -1,0 +1,36 @@
+name,position,GW,minutes,goals_scored,assists,clean_sheets,goals_conceded,saves,penalties_saved,penalties_missed,yellow_cards,red_cards,own_goals,bonus,defensive_contribution,total_points
+Yehor Yarmoliuk,MID,2,78,0,0,1,0,0,0,0,0,0,0,0,15,5
+Amine Adli,MID,3,26,0,0,0,0,0,0,0,0,0,0,0,11,1
+Saša Lukić,MID,3,90,0,0,0,2,0,0,0,1,0,0,0,10,1
+Rodrigo Bentancur,MID,3,90,0,0,0,1,0,0,0,0,0,0,0,10,2
+Sander Berge,MID,3,90,0,0,0,2,0,0,0,0,0,0,0,11,2
+Brenden Aaronson,MID,4,76,0,0,1,0,0,0,0,0,0,0,0,12,5
+Bernd Leno,GK,2,90,0,0,0,1,3,0,0,0,0,0,0,0,3
+Bernd Leno,GK,3,90,0,0,0,2,4,0,0,0,0,0,0,0,2
+Karl Darlow,GK,4,90,0,0,0,1,3,0,0,0,0,0,0,0,3
+Bernd Leno,GK,4,90,0,0,1,0,3,0,0,0,0,0,1,0,8
+Reinildo Mandava,DEF,1,90,0,0,1,0,0,0,0,0,0,0,0,8,6
+Jake O'Brien,DEF,2,90,0,0,1,0,0,0,0,0,0,0,0,4,6
+Dan Burn,DEF,3,90,0,0,1,0,0,0,0,0,0,0,0,1,6
+Jayden Bogle,DEF,2,82,0,0,0,4,0,0,0,1,0,0,0,4,-1
+Jackson Tchatchoua,DEF,3,62,0,0,0,3,0,0,0,0,0,0,0,3,1
+Marco Bizot,GK,3,90,0,0,0,3,1,0,0,1,0,0,0,0,0
+Jayden Bogle,DEF,2,82,0,0,0,4,0,0,0,1,0,0,0,4,-1
+Will Hughes,MID,3,70,0,0,1,0,0,0,0,1,0,0,0,8,2
+Endo Wataru,MID,3,1,0,0,0,0,0,0,0,1,0,0,0,1,0
+Saša Lukić,MID,3,90,0,0,0,2,0,0,0,1,0,0,0,10,1
+Kevin Schade,MID,3,89,0,0,0,1,0,0,1,0,0,0,0,4,0
+Danny Welbeck,FWD,2,90,0,0,0,2,0,0,1,0,0,0,0,1,0
+Jordan Pickford,GK,2,90,0,0,1,0,4,1,0,0,0,0,3,0,15
+Kevin Schade,MID,4,90,1,0,0,2,0,0,0,0,0,0,0,4,7
+Mason Mount,MID,7,64,1,0,1,0,0,0,0,0,0,0,2,4,10
+Eliezer Mayenda Dossou,FWD,1,75,1,0,1,0,0,0,0,0,0,0,2,0,8
+Federico Chiesa,MID,1,8,1,0,0,0,0,0,0,0,0,0,0,1,6
+Erling Haaland,FWD,1,72,2,0,1,0,0,0,0,0,0,0,3,2,13
+Lewis Dobbin,MID,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Ryan Christie,MID,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Rodrigo Muniz Carvalho,FWD,2,70,0,0,0,1,0,0,0,0,0,1,0,6,0
+Josh Cullen,MID,3,90,0,0,0,3,0,0,0,0,0,1,0,14,2
+Jarrod Bowen,FWD,12,90,0,0,0,2,0,0,0,0,0,0,0,12,4
+Armando Broja,FWD,19,90,0,1,0,3,0,0,0,0,0,0,0,12,7
+Jordan Pickford,GK,2,90,0,0,1,0,4,1,0,0,0,0,3,0,15

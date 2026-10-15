@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -88,3 +89,37 @@ def load_rules(season: str, rules_dir: Path = RULES_DIR) -> Rules:
     if rules.season != season:
         raise ValueError(f"{path} declares season {rules.season!r}")
     return rules
+
+
+def points_for(rules: Rules, position: Position, stats: Mapping[str, int]) -> int:
+    """FPL points for one player in one fixture, from the raw stat counts plus awarded bonus.
+
+    `stats` keys follow the FPL API and vaastav column names. `defensive_contribution` is the
+    CBIT or CBIRT count for the player's position.
+    """
+    s = rules.scoring
+    minutes = stats["minutes"]
+    points = 0
+    if minutes > 0:
+        points += (
+            s.minutes.long_play
+            if minutes >= s.minutes.long_play_threshold
+            else s.minutes.short_play
+        )
+    points += stats["goals_scored"] * s.goals_scored[position]
+    points += stats["assists"] * s.assists
+    if stats["clean_sheets"] and minutes >= s.minutes.long_play_threshold:
+        points += s.clean_sheets[position]
+    points += stats["goals_conceded"] // s.goals_conceded_per * s.goals_conceded[position]
+    if position == "GKP":
+        points += stats["saves"] // s.saves_per * s.saves
+    points += stats["penalties_saved"] * s.penalties_saved
+    points += stats["penalties_missed"] * s.penalties_missed
+    points += stats["yellow_cards"] * s.yellow_cards
+    points += stats["red_cards"] * s.red_cards
+    points += stats["own_goals"] * s.own_goals
+    if position != "GKP":
+        dc = s.defensive_contribution
+        if stats["defensive_contribution"] >= dc.threshold[position]:
+            points += dc.points[position]
+    return points + stats["bonus"]

@@ -1,0 +1,60 @@
+# FPL rules for 2025/26.
+# Sources:
+#   vaastav: tests/test_rules.py recomputes total_points for real 2025-26 gameweek rows from
+#            their stat columns with these values. A full-season check matched all 29,757 rows.
+#   carried: same as 2026/27 (config/rules/2026-27.yaml) and not checkable from points data.
+season: "2025-26"
+
+squad:                       # carried
+  size: 15
+  starting: 11
+  budget_tenths: 1000
+  max_per_team: 3
+  positions:
+    GKP: {select: 2, min_play: 1, max_play: 1}
+    DEF: {select: 5, min_play: 3, max_play: 5}
+    MID: {select: 5, min_play: 2, max_play: 5}
+    FWD: {select: 3, min_play: 1, max_play: 3}
+
+transfers:
+  free_per_gw: 1             # carried
+  max_banked: 5              # carried
+  hit_cost: 4                # carried
+  sell_on_fee: 0.5           # carried
+
+chips:                       # carried: one of each per half
+  - {name: wildcard, start_gw: 2, end_gw: 19}
+  - {name: wildcard, start_gw: 20, end_gw: 38}
+  - {name: freehit, start_gw: 2, end_gw: 19}
+  - {name: freehit, start_gw: 20, end_gw: 38}
+  - {name: bboost, start_gw: 1, end_gw: 19}
+  - {name: bboost, start_gw: 20, end_gw: 38}
+  - {name: 3xc, start_gw: 1, end_gw: 19}
+  - {name: 3xc, start_gw: 20, end_gw: 38}
+
+scoring:
+  minutes:
+    short_play: 1            # vaastav: 1-59 minutes
+    long_play: 2             # vaastav: 60+ minutes
+    long_play_threshold: 60  # vaastav
+  goals_scored: {GKP: 10, DEF: 6, MID: 5, FWD: 4}       # vaastav
+  assists: 3                                              # vaastav
+  clean_sheets: {GKP: 4, DEF: 4, MID: 1, FWD: 0}        # vaastav; needs 60+ minutes
+  goals_conceded: {GKP: -1, DEF: -1, MID: 0, FWD: 0}    # vaastav; per goals_conceded_per
+  goals_conceded_per: 2                                   # vaastav
+  saves: 1                                                # vaastav; per saves_per
+  saves_per: 3                                            # vaastav
+  penalties_saved: 5                                      # vaastav
+  penalties_missed: -2                                    # vaastav
+  yellow_cards: -1                                        # vaastav
+  red_cards: -3                                           # vaastav
+  own_goals: -2                                           # vaastav
+  bonus_by_rank: [3, 2, 1]                                # carried; ties share the rank
+  defensive_contribution:
+    points: {GKP: 0, DEF: 2, MID: 2, FWD: 2}             # vaastav
+    # carried: DEF count clearances, blocks, interceptions, tackles (CBIT);
+    # MID and FWD also count recoveries (CBIRT).
+    threshold: {DEF: 10, MID: 12, FWD: 12}               # vaastav
+
+# 2026/27 changed BPS; the 2025/26 table is the baseline those changes apply to.
+bps_changes: {}
