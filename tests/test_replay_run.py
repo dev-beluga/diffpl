@@ -37,6 +37,7 @@ def make_season() -> SeasonData:
                 "gw": [gw for _, gw in rows],
                 "total_points": [2] * len(rows),
                 "minutes": [90] * len(rows),
+                "kickoff_time": kick,
                 "as_of": [k + timedelta(hours=3) for k in kick],
             }
         ),
@@ -46,6 +47,7 @@ def make_season() -> SeasonData:
                 "element_id": [i for i, _ in rows],
                 "team_name": [f"T{i}" for i, _ in rows],
                 "price_tenths": [60] * len(rows),
+                "selected_by": [1000 * i for i, _ in rows],
                 "as_of": [deadline(gw) - timedelta(minutes=1) for _, gw in rows],
             }
         ),
@@ -53,12 +55,15 @@ def make_season() -> SeasonData:
             {
                 "fixture_id": list(GWS),
                 "gw": list(GWS),
+                "home_team_id": [1, 2, 3],
+                "away_team_id": [4, 5, 6],
                 "home_score": [1, 1, 1],
                 "away_score": [0, 0, 0],
                 "finished": [True] * 3,
                 "result_as_of": [deadline(g) + timedelta(hours=5) for g in GWS],
             }
         ),
+        teams=pl.DataFrame({"team_id": ids, "team_name": [f"T{i}" for i in ids]}),
         players=pl.DataFrame(
             {"element_id": ids, "player_name": [str(i) for i in ids], "position": POSITIONS}
         ),

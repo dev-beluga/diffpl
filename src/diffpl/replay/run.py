@@ -51,7 +51,7 @@ def gw_totals(data: SeasonData, gw: int) -> tuple[dict[int, int], dict[int, int]
     """Points and minutes per player summed over the GW's matches. Env side only."""
     rows = (
         data.player_matches.filter(pl.col("gw") == gw)
-        .group_by("element_id")
+        .group_by("element_id", maintain_order=True)
         .agg(pl.col("total_points").sum(), pl.col("minutes").sum())
     )
     ids = rows["element_id"].to_list()

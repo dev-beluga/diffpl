@@ -7,7 +7,7 @@ observations, never `SeasonData`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 import polars as pl
@@ -28,6 +28,7 @@ class Observation:
     # has final kickoff times, so a postponement shows up before it was announced.
     fixtures: pl.DataFrame
     players: pl.DataFrame  # element_id, name, position
+    teams: pl.DataFrame  # team_id, team_name
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,9 @@ class SeasonData:
     prices: pl.DataFrame
     fixtures: pl.DataFrame
     players: pl.DataFrame
+    teams: pl.DataFrame = field(
+        default_factory=lambda: pl.DataFrame(schema={"team_id": pl.Int64, "team_name": pl.String})
+    )
 
     @property
     def gameweeks(self) -> list[int]:
@@ -67,6 +71,7 @@ class SeasonData:
             prices=self.prices.filter(known),
             fixtures=fixtures,
             players=self.players,
+            teams=self.teams,
         )
 
 
@@ -126,6 +131,11 @@ def load_season(engine: Engine, season: str) -> SeasonData:
         """,
         season,
     )
+    teams = _read(
+        engine,
+        "select team_id, team_name from staging.stg_vaastav__teams where season = :s",
+        season,
+    )
     if deadlines.is_empty():
         raise LookupError(f"season {season} is not loaded")
-    return SeasonData(season, deadlines, player_matches, prices, fixtures, players)
+    return SeasonData(season, deadlines, player_matches, prices, fixtures, players, teams)

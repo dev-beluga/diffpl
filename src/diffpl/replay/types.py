@@ -63,7 +63,8 @@ class InitialSquad:
 
 
 class Manager(Protocol):
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def pick_squad(self, view: ManagerView) -> InitialSquad: ...
 
