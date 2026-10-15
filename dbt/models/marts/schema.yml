@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: mart_gameweek_deadlines
+    description: Deadline per season and GW. Replay reads rows with as_of before this time.
+    columns:
+      - name: season
+        tests: [not_null]
+      - name: gw
+        tests: [not_null]
+      - name: deadline_time
+        tests: [not_null]

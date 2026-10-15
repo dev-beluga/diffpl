@@ -10,6 +10,7 @@ target-path: target
 clean-targets: ["target", "dbt_packages"]
 
 vars:
+  live_season: "2026-27"
   # Bonus is confirmed about an hour after a match day ends. A GW row is treated as known
   # this long after kickoff. Replay still filters on as_of < deadline.
   match_settle_interval: "3 hours"
@@ -19,3 +20,6 @@ models:
     staging:
       +schema: staging
       +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
