@@ -17,3 +17,13 @@ models:
         tests: [not_null]
       - name: as_of
         tests: [not_null]
+  - name: mart_league_ownership
+    description: League ownership and effective ownership per GW and player.
+    columns:
+      - name: ownership
+        tests: [not_null]
+  - name: mart_league_managers
+    description: Season-to-date figures per league member.
+    columns:
+      - name: entry_id
+        tests: [not_null]
