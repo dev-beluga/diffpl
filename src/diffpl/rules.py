@@ -39,9 +39,10 @@ class Transfers(Strict):
 
 
 class Chip(Strict):
-    name: Literal["wildcard", "freehit", "bboost", "3xc"]
+    name: Literal["wildcard", "freehit", "bboost", "3xc", "manager"]
     start_gw: int
     end_gw: int
+    duration_gws: int = 1
 
 
 class Minutes(Strict):
@@ -53,6 +54,18 @@ class Minutes(Strict):
 class DefensiveContribution(Strict):
     points: dict[Position, int]
     threshold: dict[Literal["DEF", "MID", "FWD"], int]
+
+
+class AssistantManager(Strict):
+    """2024-25 only. Points for the picked manager's club result."""
+
+    win: int
+    draw: int
+    goal: int
+    clean_sheet: int
+    table_bonus_win: int
+    table_bonus_draw: int
+    table_bonus_min_gap: int
 
 
 class Scoring(Strict):
@@ -70,7 +83,8 @@ class Scoring(Strict):
     red_cards: int
     own_goals: int
     bonus_by_rank: list[int]
-    defensive_contribution: DefensiveContribution
+    defensive_contribution: DefensiveContribution | None = None
+    assistant_manager: AssistantManager | None = None
 
 
 class Rules(Strict):
@@ -80,6 +94,9 @@ class Rules(Strict):
     chips: list[Chip]
     scoring: Scoring
     bps_changes: dict[str, int] = {}
+    special_events: dict[str, int] = {}
+    # Dotted paths whose values come from secondary sources or carry-over, not an official one.
+    unverified: list[str] = []
 
 
 def load_rules(season: str, rules_dir: Path = RULES_DIR) -> Rules:

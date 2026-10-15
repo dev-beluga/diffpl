@@ -40,6 +40,7 @@ def test_flat_points_match_api(key: str) -> None:
 def test_minutes_and_defcon_match_api() -> None:
     assert RULES.scoring.minutes.short_play == SCORING["short_play"]
     assert RULES.scoring.minutes.long_play == SCORING["long_play"]
+    assert RULES.scoring.defensive_contribution is not None
     assert RULES.scoring.defensive_contribution.points == SCORING["defensive_contribution"]
 
 

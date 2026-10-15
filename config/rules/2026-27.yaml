@@ -66,3 +66,12 @@ bps_changes:                 # pl
   gk_save_inside_box_extra: 1
   gk_save_big_chance_extra: 1
   penalty_save: 7            # was 8; plus big-chance extra makes 8
+
+unverified:
+  - transfers.free_per_gw
+  - transfers.hit_cost
+  - scoring.minutes.long_play_threshold
+  - scoring.goals_conceded_per
+  - scoring.saves_per
+  - scoring.bonus_by_rank
+  - scoring.defensive_contribution.threshold
