@@ -99,7 +99,8 @@ def load_season(engine: Engine, season: str) -> SeasonData:
     prices = _read(
         engine,
         """
-        select gw, element_id, price_tenths, selected_by, transfers_in, transfers_out, as_of
+        select gw, element_id, team_name, price_tenths, selected_by, transfers_in,
+               transfers_out, as_of
         from marts.mart_player_deadline_prices where season = :s
         """,
         season,
