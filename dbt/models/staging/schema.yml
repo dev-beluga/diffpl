@@ -54,3 +54,25 @@ models:
         tests: [not_null]
       - name: as_of
         tests: [not_null]
+  - name: stg_fpl__league_standings
+    columns:
+      - name: league_id
+        tests: [not_null]
+      - name: entry_id
+        tests: [not_null]
+  - name: stg_fpl__entry_gameweeks
+    columns:
+      - name: entry_id
+        tests: [not_null]
+      - name: gw
+        tests: [not_null]
+  - name: stg_fpl__entry_chips
+    columns:
+      - name: chip
+        tests: [not_null]
+  - name: stg_fpl__entry_picks
+    columns:
+      - name: entry_id
+        tests: [not_null]
+      - name: element_id
+        tests: [not_null]
