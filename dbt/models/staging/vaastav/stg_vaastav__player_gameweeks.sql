@@ -1,9 +1,13 @@
 -- One row per player per fixture (double gameweeks give two rows per GW).
 -- as_of: kickoff plus the settle interval. A row is never knowable before its match ends.
+-- Upstream has exact duplicate rows (2025-26: two players). Keep the first;
+-- assert_vaastav_gw_duplicates_identical fails if duplicates ever differ.
 with src as (
-    select season, row_num, data, source_commit
+    select distinct on (season, data ->> 'element', coalesce(data ->> 'fixture', data ->> 'kickoff_time'))
+        season, row_num, data, source_commit
     from {{ ref('base_vaastav__rows') }}
     where file = 'gws/merged_gw.csv'
+    order by season, data ->> 'element', coalesce(data ->> 'fixture', data ->> 'kickoff_time'), row_num
 )
 
 select
