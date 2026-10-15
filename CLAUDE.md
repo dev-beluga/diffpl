@@ -181,5 +181,6 @@ Phase 0.
 - Ingest: `uv run python -m diffpl.ingest fpl` and `uv run python -m diffpl.ingest vaastav --season 2024-25`
 - Tests: `uv run pytest` (set `DIFFPL_TEST_DATABASE_URL` to include Postgres tests)
 - dbt: `uv run dbt build --project-dir dbt --profiles-dir dbt`
+- Leagues: `uv run python -m diffpl.ingest league --id <league_id>` then `uv run python -m diffpl.leagues --id <league_id> --entry <team_id>`; rules in `config/leagues/<league_id>.yaml`
 - Replay: `uv run python -m diffpl.replay --season 2024-25 [--manager form]`
 - (Add as they exist: evals, serve.)
