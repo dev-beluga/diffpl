@@ -11,7 +11,8 @@ from collections.abc import Sequence
 import polars as pl
 from sqlalchemy import create_engine
 
-from diffpl.leagues.report import exposure, load_league, weekly_outcomes
+from diffpl.leagues.projection import METHOD, SEASON_GWS, overall_contributions, project
+from diffpl.leagues.report import entry_rows, exposure, load_league, weekly_outcomes
 from diffpl.leagues.rules import load_league_rules
 from diffpl.settings import get_settings
 
@@ -58,6 +59,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     print("\nOverall (league rules):")
     for rank, (e, pts) in enumerate(sorted(overall.items(), key=lambda kv: -kv[1]), start=1):
         print(f"  {rank:>2}. {names.get(e, e)}  {pts}")
+
+    gws_left = SEASON_GWS - data.last_gw
+    proj = project(overall_contributions(rules, outcomes, entry_rows(data)), gws_left)
+    print(f"\nProjected final standings, {gws_left} GWs left ({METHOD}):")
+    for p in sorted(proj, key=lambda p: -p.p_win):
+        print(
+            f"  {names.get(p.entry_id, p.entry_id):<24} now {p.current:>4}  "
+            f"expected {p.expected_final:>6.0f}  win {p.p_win:>6.1%}  top 3 {p.p_top3:>6.1%}"
+        )
 
     gw = args.gw or data.last_gw
     top = data.ownership.filter(pl.col("gw") == gw).join(data.names, on="element_id", how="left")
