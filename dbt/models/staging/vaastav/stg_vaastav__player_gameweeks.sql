@@ -1,9 +1,11 @@
 -- One row per player per fixture (double gameweeks give two rows per GW).
 -- as_of: kickoff plus the settle interval. A row is never knowable before its match ends.
+-- 2025-26 merged_gw.csv repeats some rows byte for byte (10 at commit 9779cdb); keep one.
 with src as (
-    select season, row_num, data, source_commit
+    select season, min(row_num) as row_num, data, source_commit
     from {{ ref('base_vaastav__rows') }}
     where file = 'gws/merged_gw.csv'
+    group by season, data, source_commit
 )
 
 select
