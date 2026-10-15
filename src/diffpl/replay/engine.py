@@ -33,7 +33,9 @@ class Market:
     @classmethod
     def at(cls, prices: pl.DataFrame, players: pl.DataFrame) -> Market:
         """Latest known row per player. `prices` must already be filtered to the deadline."""
-        latest = prices.sort("as_of").group_by("element_id").last()
+        latest = (
+            prices.sort("as_of", "element_id").group_by("element_id", maintain_order=True).last()
+        )
         return cls(
             price=dict(zip(latest["element_id"], latest["price_tenths"], strict=True)),
             team=dict(zip(latest["element_id"], latest["team_name"], strict=True)),
@@ -70,7 +72,11 @@ def valid_formation(rules: Rules, positions: list[Position]) -> bool:
     )
 
 
-def check_squad(rules: Rules, ids: list[int], market: Market) -> None:
+def check_squad(
+    rules: Rules, ids: list[int], market: Market, clubs: set[str] | None = None
+) -> None:
+    """Validate squad shape. `clubs` limits the club check to those clubs: a player moving club
+    mid-season can leave a squad over the limit, which FPL allows until a transfer adds to it."""
     if len(ids) != rules.squad.size or len(set(ids)) != len(ids):
         raise InvalidDecision(f"squad must be {rules.squad.size} distinct players")
     missing = [i for i in ids if i not in market.price]
@@ -81,7 +87,11 @@ def check_squad(rules: Rules, ids: list[int], market: Market) -> None:
         if by_pos[pos] != limits.select:
             raise InvalidDecision(f"need {limits.select} {pos}, got {by_pos[pos]}")
     by_team = Counter(market.team[i] for i in ids)
-    over = [t for t, n in by_team.items() if n > rules.squad.max_per_team]
+    over = [
+        t
+        for t, n in by_team.items()
+        if n > rules.squad.max_per_team and (clubs is None or t in clubs)
+    ]
     if over:
         raise InvalidDecision(f"more than {rules.squad.max_per_team} players from {over}")
 
@@ -138,7 +148,7 @@ def apply_transfers(
         picks[t.in_id] = Pick(t.in_id, market.price[t.in_id])
     if bank < 0:
         raise InvalidDecision(f"over budget by {-bank} tenths")
-    check_squad(rules, list(picks), market)
+    check_squad(rules, list(picks), market, clubs={market.team[i] for i in ins})
 
     free = d.chip in FREE_TRANSFER_CHIPS or unlimited
     paid = 0 if free else max(0, len(d.transfers) - state.free_transfers)

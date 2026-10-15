@@ -164,3 +164,19 @@ def test_bench_player_booked_without_playing_does_not_count() -> None:
     pts, mins = everyone()
     pts[12], mins[12] = -1, 0
     assert score_gw(R, DEC, POS, pts, mins).points == 11 * 2 + 2
+
+
+def test_club_moved_player_over_limit_is_allowed_until_a_transfer_adds_to_it() -> None:
+    moved = Market(
+        price=MARKET.price, team={**MARKET.team, 13: "X", 14: "X", 15: "X", 12: "X"}, position=POS
+    )
+    hold = Decision(LINEUP, BENCH, 13, 8)
+    assert apply_transfers(R, STATE, hold, moved, 5, False).hits == 0
+    other = Decision(LINEUP, BENCH, 13, 8, (Transfer(3, 16),))
+    with pytest.raises(InvalidDecision):  # position mismatch, unrelated to club X
+        apply_transfers(R, STATE, other, moved, 5, False)
+    more = Market(price=MARKET.price, team={**moved.team, 18: "X"}, position=POS)
+    with pytest.raises(InvalidDecision, match="more than 3"):
+        apply_transfers(
+            R, STATE, Decision(LINEUP, BENCH, 13, 8, (Transfer(14, 18),)), more, 5, False
+        )
