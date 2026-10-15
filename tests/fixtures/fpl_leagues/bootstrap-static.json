@@ -1,0 +1,4 @@
+{"events": [{"id": 1, "deadline_time": "2026-08-21T17:30:00Z", "finished": true, "is_current": false},
+            {"id": 2, "deadline_time": "2026-08-28T17:30:00Z", "finished": false, "is_current": true},
+            {"id": 3, "deadline_time": "2026-09-04T17:30:00Z", "finished": false, "is_current": false}],
+ "elements": []}

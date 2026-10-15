@@ -2,6 +2,7 @@
 
 uv run python -m diffpl.ingest fpl [--no-players]
 uv run python -m diffpl.ingest vaastav --season 2024-25 [--season ...] [--ref master]
+uv run python -m diffpl.ingest league --id 123456 [--id ...] [--max-members 50]
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine
 
-from diffpl.ingest import fpl_api, vaastav
+from diffpl.ingest import fpl_api, fpl_leagues, vaastav
 from diffpl.ingest.http import CachedFetcher
 from diffpl.ingest.store import create_tables, fpl_api_responses, insert_new, vaastav_rows
 from diffpl.settings import get_settings
@@ -30,6 +31,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     hist = sub.add_parser("vaastav", help="load historical seasons")
     hist.add_argument("--season", action="append", required=True)
     hist.add_argument("--ref", default="master", help="branch, tag or commit SHA to pin")
+    league = sub.add_parser("league", help="snapshot classic mini-leagues")
+    league.add_argument("--id", type=int, action="append", required=True)
+    league.add_argument("--max-members", type=int, default=50)
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -41,6 +45,13 @@ def main(argv: Sequence[str] | None = None) -> None:
             rows = list(fpl_api.fetch_snapshot(fetcher, with_players=not args.no_players))
             added = insert_new(engine, fpl_api_responses, rows)
             log.info("fpl api: %d responses fetched, %d new", len(rows), added)
+        elif args.source == "league":
+            for league_id in args.id:
+                rows = list(
+                    fpl_leagues.fetch_league(fetcher, league_id, max_members=args.max_members)
+                )
+                added = insert_new(engine, fpl_api_responses, rows)
+                log.info("league %d: %d responses fetched, %d new", league_id, len(rows), added)
         else:
             commit = vaastav.resolve_commit(fetcher, args.ref)
             for season in args.season:

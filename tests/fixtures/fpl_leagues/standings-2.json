@@ -1,0 +1,3 @@
+{"league": {"id": 999, "name": "Test League"},
+ "standings": {"has_next": false, "page": 2, "results": [
+   {"entry": 13, "entry_name": "C FC", "player_name": "Cy", "rank": 3, "total": 100, "event_total": 40}]}}

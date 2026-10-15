@@ -1,0 +1,6 @@
+{"active_chip": null,
+ "entry_history": {"event": 1, "points": 60, "total_points": 60, "bank": 5, "value": 1000, "event_transfers": 0, "event_transfers_cost": 0, "points_on_bench": 4},
+ "picks": [
+  {"element": 1, "position": 1, "multiplier": 1, "is_captain": false, "is_vice_captain": false},
+  {"element": 2, "position": 2, "multiplier": 2, "is_captain": true, "is_vice_captain": false},
+  {"element": 3, "position": 12, "multiplier": 0, "is_captain": false, "is_vice_captain": true}]}

@@ -1,0 +1,5 @@
+{"current": [
+  {"event": 1, "points": 60, "total_points": 60, "rank": 1000, "overall_rank": 1000, "bank": 5, "value": 1000, "event_transfers": 0, "event_transfers_cost": 0, "points_on_bench": 4},
+  {"event": 2, "points": 74, "total_points": 130, "rank": 500, "overall_rank": 800, "bank": 0, "value": 1004, "event_transfers": 2, "event_transfers_cost": 4, "points_on_bench": 1}],
+ "chips": [{"name": "bboost", "time": "2026-08-27T10:00:00Z", "event": 2}],
+ "past": []}

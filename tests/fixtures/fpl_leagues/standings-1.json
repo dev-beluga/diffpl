@@ -1,0 +1,4 @@
+{"league": {"id": 999, "name": "Test League"},
+ "standings": {"has_next": true, "page": 1, "results": [
+   {"entry": 11, "entry_name": "A FC", "player_name": "Ann", "rank": 1, "total": 130, "event_total": 70},
+   {"entry": 12, "entry_name": "B FC", "player_name": "Bo", "rank": 2, "total": 120, "event_total": 55}]}}
