@@ -1,0 +1,62 @@
+# FPL rules for 2022-23.
+# Sources: carried from 2024-25 minus the changes FPL announced for 2024-25 (goalkeeper goals
+# 6 -> 10, bank up to 5 free transfers, Assistant Manager). No DefCon. BPS is not encoded.
+# Special case: the 2022 World Cup break; unlimited free transfers before GW17
+# (unverified, replay must apply it).
+season: "2022-23"
+
+squad:
+  size: 15
+  starting: 11
+  budget_tenths: 1000
+  max_per_team: 3
+  positions:
+    GKP: {select: 2, min_play: 1, max_play: 1}
+    DEF: {select: 5, min_play: 3, max_play: 5}
+    MID: {select: 5, min_play: 2, max_play: 5}
+    FWD: {select: 3, min_play: 1, max_play: 3}
+
+transfers:
+  free_per_gw: 1
+  max_banked: 2              # raised to 5 in 2024-25
+  hit_cost: 4
+  sell_on_fee: 0.5
+
+chips:
+  - {name: wildcard, start_gw: 2, end_gw: 19}
+  - {name: wildcard, start_gw: 20, end_gw: 38}
+  - {name: freehit, start_gw: 2, end_gw: 38}
+  - {name: bboost, start_gw: 1, end_gw: 38}
+  - {name: 3xc, start_gw: 1, end_gw: 38}
+
+scoring:
+  minutes:
+    short_play: 1            # carried: 1-59 minutes
+    long_play: 2             # carried: 60+ minutes
+    long_play_threshold: 60  # carried
+  goals_scored: {GKP: 6, DEF: 6, MID: 5, FWD: 4}        # GKP raised to 10 in 2024-25
+  assists: 3                                              # carried
+  clean_sheets: {GKP: 4, DEF: 4, MID: 1, FWD: 0}        # carried; needs 60+ minutes (carried)
+  goals_conceded: {GKP: -1, DEF: -1, MID: 0, FWD: 0}    # carried; per goals_conceded_per
+  goals_conceded_per: 2                                   # carried
+  saves: 1                                                # carried; per saves_per
+  saves_per: 3                                            # carried
+  penalties_saved: 5                                      # carried
+  penalties_missed: -2                                    # carried
+  yellow_cards: -1                                        # carried
+  red_cards: -3                                           # carried
+  own_goals: -2                                           # carried
+  bonus_by_rank: [3, 2, 1]                                # carried; ties share the rank
+
+special_events:
+  unlimited_transfers_gw: 17
+
+# Player scoring (all of `scoring` except bonus_by_rank) is verified: tests/test_scoring_seasons.py
+# recomputes every player-match in the season from this file and matches FPL's total_points.
+unverified:
+  - squad
+  - transfers
+  - chips[].start_gw
+  - chips[].end_gw
+  - scoring.bonus_by_rank
+  - special_events

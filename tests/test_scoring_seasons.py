@@ -30,7 +30,7 @@ QUERY = text(
 )
 
 
-@pytest.mark.parametrize("season", ["2024-25", "2025-26"])
+@pytest.mark.parametrize("season", ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26"])
 def test_rules_reproduce_fpl_points(season: str) -> None:
     assert URL is not None
     engine = create_engine(URL)
