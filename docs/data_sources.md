@@ -24,3 +24,5 @@
 - Advanced stats (xG, xA) appear in `merged_gw.csv` from 2022-23. No other xG source is used
   until its terms are checked.
 - vaastav `fixtures.csv` difficulty ratings are end-of-season values, not point-in-time.
+- 2022-23 GW7 was fully postponed (national mourning); the season has 37 playable GWs and
+  `mart_gameweek_deadlines` has no GW7 row.

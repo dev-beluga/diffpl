@@ -10,3 +10,10 @@ models:
         tests: [not_null]
       - name: deadline_time
         tests: [not_null]
+  - name: mart_player_deadline_prices
+    description: Price, ownership and transfers per player at each deadline; as_of = deadline - 1 minute.
+    columns:
+      - name: price_tenths
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
