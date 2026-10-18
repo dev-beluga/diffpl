@@ -184,5 +184,6 @@ Phase 0.
 - Leagues: `uv run python -m diffpl.ingest league --id <league_id>` then `uv run python -m diffpl.leagues --id <league_id> --entry <team_id>`; rules in `config/leagues/<league_id>.yaml`
 - Replay: `uv run python -m diffpl.replay --season 2024-25 [--manager form]`
 - Models: `uv run python -m diffpl.models train` (MLflow) and `uv run python -m diffpl.models replay`
+- Promote: `uv run python -m diffpl.models promote [--version N]` (gate in ADR-0007)
 - Dashboard: `uv run streamlit run src/diffpl/ui/app.py`
 - (Add as they exist: evals, serve.)

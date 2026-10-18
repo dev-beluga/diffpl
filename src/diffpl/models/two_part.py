@@ -6,7 +6,9 @@ the training frequencies, since a benched player can still be booked.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
@@ -109,3 +111,29 @@ class TwoPartModel:
     def expected_points(self, dist: np.ndarray) -> np.ndarray:
         assert self.bin_values is not None
         return np.asarray(dist @ self.bin_values)
+
+    def save(self, path: Path) -> None:
+        """Write boosters and fitted arrays to a directory (the MLflow `model` artifact)."""
+        assert self.minutes_model is not None
+        assert self.benched_dist is not None and self.bin_values is not None
+        path.mkdir(parents=True, exist_ok=True)
+        self.minutes_model.save_model(str(path / "minutes.txt"))
+        for c, booster in self.points_models.items():
+            booster.save_model(str(path / f"points_m{c}.txt"))
+        np.save(path / "benched_dist.npy", self.benched_dist)
+        np.save(path / "bin_values.npy", self.bin_values)
+        (path / "meta.json").write_text(json.dumps({"seed": self.seed, "params": self.params}))
+
+    @classmethod
+    def load(cls, path: Path) -> TwoPartModel:
+        meta = json.loads((path / "meta.json").read_text())
+        return cls(
+            seed=meta["seed"],
+            params=meta["params"],
+            minutes_model=lgb.Booster(model_file=str(path / "minutes.txt")),
+            points_models={
+                c: lgb.Booster(model_file=str(path / f"points_m{c}.txt")) for c in (1, 2)
+            },
+            benched_dist=np.load(path / "benched_dist.npy"),
+            bin_values=np.load(path / "bin_values.npy"),
+        )

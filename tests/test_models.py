@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import polars as pl
 import pytest
@@ -90,3 +92,12 @@ def test_plot_writes_one_png_per_position(tmp_path) -> None:
         "calibration_DEF.png",
         "calibration_MID.png",
     ]
+
+
+def test_two_part_save_load_round_trip(tmp_path: Path) -> None:
+    model = TwoPartModel(max_rounds=20).fit(synthetic(1500, 1), synthetic(400, 2))
+    model.save(tmp_path / "model")
+    loaded = TwoPartModel.load(tmp_path / "model")
+    test = synthetic(200, 3)
+    assert np.allclose(model.predict_dist(test), loaded.predict_dist(test))
+    assert np.allclose(model.bin_values, loaded.bin_values)  # type: ignore[arg-type]

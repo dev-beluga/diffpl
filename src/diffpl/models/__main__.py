@@ -1,6 +1,7 @@
 """Train and evaluate projection models (ADR-0006).
 
 uv run python -m diffpl.models train [--no-mlflow]
+uv run python -m diffpl.models promote [--version N]
 
 Train on 2021-22 and 2022-23, early-stop on 2023-24, report on 2024-25 and 2025-26.
 """
@@ -16,11 +17,11 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 
 from diffpl.features.build import FEATURES, season_table
 from diffpl.models import calibration
-from diffpl.models.evaluate import climatology, summary
+from diffpl.models.evaluate import climatology, rps, summary
 from diffpl.models.two_part import N_BINS, TwoPartModel, add_labels
 from diffpl.replay.data import load_season
 from diffpl.settings import get_settings
@@ -28,6 +29,7 @@ from diffpl.settings import get_settings
 TRAIN = ("2021-22", "2022-23")
 VALID = ("2023-24",)
 TEST = ("2024-25", "2025-26")
+REGISTERED = "projections"
 log = logging.getLogger("diffpl.models")
 
 
@@ -40,7 +42,8 @@ def dataset_version(df: pl.DataFrame) -> str:
 
 def evaluate(
     model: TwoPartModel, train: pl.DataFrame, test: pl.DataFrame
-) -> tuple[pl.DataFrame, dict[str, pl.DataFrame]]:
+) -> tuple[pl.DataFrame, dict[str, pl.DataFrame], pl.DataFrame]:
+    """Metrics table, calibration tables and per-row RPS (for the promotion gate)."""
     train, test = add_labels(train), add_labels(test)
     dist = model.predict_dist(test)
     pos = test["position"].to_numpy()
@@ -74,7 +77,21 @@ def evaluate(
         pos,
         seed=model.seed,
     )
-    return table, calib
+    scores = test.select("season", "gw", "element_id").with_columns(rps=rps(dist, obs))
+    return table, calib, scores
+
+
+def model_replay(model: TwoPartModel, engine: Engine) -> dict[str, int]:
+    """Total points of the model-driven manager per test season."""
+    from diffpl.models.manager import model_manager
+    from diffpl.replay.run import run_season
+    from diffpl.rules import load_rules
+
+    out = {}
+    for season in TEST:
+        data, rules = load_season(engine, season), load_rules(season)
+        out[season] = run_season(data, rules, model_manager("two_part", model, rules)).total_points
+    return out
 
 
 def train_cmd(use_mlflow: bool) -> None:
@@ -85,7 +102,7 @@ def train_cmd(use_mlflow: bool) -> None:
     test = pl.concat([tables[s] for s in TEST])
     version = dataset_version(pl.concat(list(tables.values())))
     model = TwoPartModel(seed=get_settings().seed).fit(train, valid)
-    table, calib = evaluate(model, train, test)
+    table, calib, scores = evaluate(model, train, test)
 
     pl.Config.set_tbl_rows(40).set_tbl_hide_dataframe_shape(True)
     print(f"dataset {version}; train {TRAIN}, valid {VALID}, test {TEST}")
@@ -101,9 +118,11 @@ def train_cmd(use_mlflow: bool) -> None:
         return
     import mlflow
 
+    replay = model_replay(model, engine)
+    print(f"\nreplay total points: {replay}")
     mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
     mlflow.set_experiment("projections")
-    with mlflow.start_run(run_name="two_part"):
+    with mlflow.start_run(run_name="two_part") as run:
         mlflow.log_params(
             {
                 "model": "two_part",
@@ -125,17 +144,80 @@ def train_cmd(use_mlflow: bool) -> None:
         for r in calib["coverage"].iter_rows(named=True):
             level = int(r["level"] * 100)
             mlflow.log_metric(f"two_part.{r['position']}.coverage{level}", r["coverage"])
+        for season, pts in replay.items():
+            mlflow.log_metric(f"replay.{season}.total_points", pts)
         with tempfile.TemporaryDirectory() as tmp:
-            assert model.minutes_model is not None
-            model.minutes_model.save_model(str(Path(tmp) / "minutes.txt"))
-            for c, booster in model.points_models.items():
-                booster.save_model(str(Path(tmp) / f"points_m{c}.txt"))
+            model.save(Path(tmp) / "model")
+            scores.write_parquet(Path(tmp) / "scores.parquet")
             for name, t in calib.items():
                 t.write_csv(Path(tmp) / f"calibration_{name}.csv")
             calibration.plot(calib, Path(tmp))
             table.write_csv(Path(tmp) / "metrics.csv")
             mlflow.log_artifacts(tmp)
-    print("\nlogged to MLflow experiment 'projections'")
+    v = register(run.info.run_id)
+    print(f"\nlogged to MLflow; registered {REGISTERED} v{v}")
+
+
+def register(run_id: str) -> str:
+    """New model version. The first becomes champion, later ones challenger."""
+    from mlflow import MlflowClient
+    from mlflow.exceptions import MlflowException
+
+    client = MlflowClient()
+    try:
+        client.get_registered_model(REGISTERED)
+    except MlflowException:
+        client.create_registered_model(REGISTERED)
+    source = f"{client.get_run(run_id).info.artifact_uri}/model"
+    version = str(client.create_model_version(REGISTERED, source, run_id).version)
+    try:
+        client.get_model_version_by_alias(REGISTERED, "champion")
+        alias = "challenger"
+    except MlflowException:
+        alias = "champion"
+    client.set_registered_model_alias(REGISTERED, alias, version)
+    print(f"{REGISTERED} v{version} is {alias}")
+    return version
+
+
+def promote_cmd(version: str | None) -> None:
+    """Gate the challenger (or `version`) against the champion; move the alias if it passes."""
+    import mlflow
+    from mlflow import MlflowClient
+
+    from diffpl.models.gate import decide
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    client = MlflowClient()
+    champ = client.get_model_version_by_alias(REGISTERED, "champion")
+    chal = (
+        client.get_model_version(REGISTERED, version)
+        if version
+        else client.get_model_version_by_alias(REGISTERED, "challenger")
+    )
+    if chal.version == champ.version:
+        raise SystemExit(f"v{chal.version} is already champion")
+
+    def load(run_id: str) -> tuple[pl.DataFrame, dict[str, float]]:
+        path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="scores.parquet")
+        return pl.read_parquet(path), client.get_run(run_id).data.metrics
+
+    champ_scores, champ_metrics = load(champ.run_id)
+    chal_scores, chal_metrics = load(chal.run_id)
+    d = decide(champ_scores, chal_scores, champ_metrics, chal_metrics, TEST, get_settings().seed)
+    print(f"challenger v{chal.version} vs champion v{champ.version}")
+    print("\n".join(d.reasons))
+    client.set_model_version_tag(
+        REGISTERED, chal.version, "gate", "passed" if d.passed else "failed"
+    )
+    client.set_model_version_tag(REGISTERED, chal.version, "gate_vs", champ.version)
+    client.set_model_version_tag(REGISTERED, chal.version, "gate_reasons", "\n".join(d.reasons))
+    if d.passed:
+        client.set_registered_model_alias(REGISTERED, "champion", chal.version)
+        client.delete_registered_model_alias(REGISTERED, "challenger")
+        print(f"promoted v{chal.version} to champion")
+    else:
+        print(f"v{chal.version} stays challenger")
 
 
 def replay_cmd() -> None:
@@ -166,12 +248,16 @@ def main(argv: Sequence[str] | None = None) -> None:
     tr = sub.add_parser("train", help="train two-part model and evaluate on test seasons")
     tr.add_argument("--no-mlflow", action="store_true")
     sub.add_parser("replay", help="replay test seasons with the model as a manager")
+    pr = sub.add_parser("promote", help="gate the challenger against the champion")
+    pr.add_argument("--version", help="model version to gate (default: challenger alias)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     if args.cmd == "train":
         train_cmd(use_mlflow=not args.no_mlflow)
     elif args.cmd == "replay":
         replay_cmd()
+    elif args.cmd == "promote":
+        promote_cmd(args.version)
 
 
 if __name__ == "__main__":
