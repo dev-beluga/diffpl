@@ -3,7 +3,9 @@ import polars as pl
 import pytest
 
 from diffpl.features.build import FEATURES
-from diffpl.models.evaluate import calibration, log_loss, rps
+from diffpl.models import calibration
+from diffpl.models.evaluate import calibration as reliability
+from diffpl.models.evaluate import log_loss, rps
 from diffpl.models.two_part import N_BINS, TwoPartModel
 
 
@@ -24,7 +26,7 @@ def test_calibration_buckets() -> None:
     rng = np.random.default_rng(0)
     p = rng.random(5000)
     outcome = rng.random(5000) < p
-    cal = calibration(p, outcome)
+    cal = reliability(p, outcome)
     assert cal.height == 10
     assert np.abs(cal["predicted"] - cal["observed"]).max() < 0.06
 
@@ -49,3 +51,42 @@ def test_two_part_learns_minutes_and_returns_valid_distributions() -> None:
     exp = model.expected_points(dist)
     starters = test["minutes_last3"].to_numpy() > 50
     assert exp[starters].mean() > exp[~starters].mean() + 2
+
+
+def test_randomized_pit_is_uniform_for_a_calibrated_forecast() -> None:
+    rng = np.random.default_rng(0)
+    dist = rng.dirichlet(np.ones(N_BINS), size=20000)
+    observed = np.array([rng.choice(N_BINS, p=d) for d in dist])
+    pit = calibration.randomized_pit(dist, observed, np.random.default_rng(1))
+    counts, _ = np.histogram(pit, bins=10, range=(0, 1))
+    assert np.abs(counts / len(pit) - 0.1).max() < 0.01
+
+
+def test_overconfident_forecast_undercovers_and_shows_u_shaped_pit() -> None:
+    rng = np.random.default_rng(0)
+    observed = rng.integers(0, N_BINS, 5000)
+    narrow = np.zeros((5000, N_BINS))
+    narrow[:, 7:9] = 0.5
+    tables = calibration.report(
+        narrow, observed, np.full(5000, 0.5), rng.random(5000) < 0.5, np.array(["MID"] * 5000), 0
+    )
+    cov = tables["coverage"].filter(pl.col("position") == "MID")
+    assert (cov["coverage"] < cov["level"] - 0.2).all()
+    pit = tables["pit"].filter(pl.col("position") == "MID")["density"].to_numpy()
+    assert pit[0] > 2 and pit[-1] > 2 and pit[4] < 1
+    assert set(tables["ece"]["event"]) == {"p60", "pts_ge1", "pts_ge2", "pts_ge6", "pts_ge10"}
+
+
+def test_plot_writes_one_png_per_position(tmp_path) -> None:
+    rng = np.random.default_rng(0)
+    dist = rng.dirichlet(np.ones(N_BINS), size=400)
+    pos = np.array(["DEF", "MID"] * 200)
+    tables = calibration.report(
+        dist, rng.integers(0, N_BINS, 400), rng.random(400), rng.random(400) < 0.5, pos, 0
+    )
+    paths = calibration.plot(tables, tmp_path)
+    assert sorted(p.name for p in paths) == [
+        "calibration_ALL.png",
+        "calibration_DEF.png",
+        "calibration_MID.png",
+    ]

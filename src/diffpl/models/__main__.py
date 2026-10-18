@@ -19,7 +19,8 @@ import polars as pl
 from sqlalchemy import create_engine
 
 from diffpl.features.build import FEATURES, season_table
-from diffpl.models.evaluate import calibration, climatology, summary
+from diffpl.models import calibration
+from diffpl.models.evaluate import climatology, summary
 from diffpl.models.two_part import N_BINS, TwoPartModel, add_labels
 from diffpl.replay.data import load_season
 from diffpl.settings import get_settings
@@ -39,7 +40,7 @@ def dataset_version(df: pl.DataFrame) -> str:
 
 def evaluate(
     model: TwoPartModel, train: pl.DataFrame, test: pl.DataFrame
-) -> tuple[pl.DataFrame, pl.DataFrame]:
+) -> tuple[pl.DataFrame, dict[str, pl.DataFrame]]:
     train, test = add_labels(train), add_labels(test)
     dist = model.predict_dist(test)
     pos = test["position"].to_numpy()
@@ -65,8 +66,14 @@ def evaluate(
             "form_last6": (np.empty(0), form),
         },
     )
-    p60 = model.predict_minutes(test)[:, 2]
-    calib = calibration(p60, (test["mclass"] == 2).to_numpy())
+    calib = calibration.report(
+        dist,
+        obs,
+        model.predict_minutes(test)[:, 2],
+        (test["mclass"] == 2).to_numpy(),
+        pos,
+        seed=model.seed,
+    )
     return table, calib
 
 
@@ -83,8 +90,12 @@ def train_cmd(use_mlflow: bool) -> None:
     pl.Config.set_tbl_rows(40).set_tbl_hide_dataframe_shape(True)
     print(f"dataset {version}; train {TRAIN}, valid {VALID}, test {TEST}")
     print(table.with_columns(pl.col(pl.Float64).round(4)))
-    print("\nCalibration of P(60+ minutes), test seasons:")
-    print(calib.with_columns(pl.col(pl.Float64).round(3)))
+    print("\nCalibration error (ECE) by event, test seasons:")
+    ece = calib["ece"].pivot("event", index="position", values="ece")
+    print(ece.with_columns(pl.col(pl.Float64).round(4)))
+    print("\nCentral interval coverage (calibrated == level):")
+    cov = calib["coverage"].pivot("level", index="position", values="coverage")
+    print(cov.with_columns(pl.col(pl.Float64).round(3)))
 
     if not use_mlflow:
         return
@@ -109,12 +120,19 @@ def train_cmd(use_mlflow: bool) -> None:
             for metric in ("rps", "log_loss", "mae"):
                 if r.get(metric) is not None:
                     mlflow.log_metric(f"{r['model']}.{r['position']}.{metric}", r[metric])
+        for r in calib["ece"].iter_rows(named=True):
+            mlflow.log_metric(f"two_part.{r['position']}.ece_{r['event']}", r["ece"])
+        for r in calib["coverage"].iter_rows(named=True):
+            level = int(r["level"] * 100)
+            mlflow.log_metric(f"two_part.{r['position']}.coverage{level}", r["coverage"])
         with tempfile.TemporaryDirectory() as tmp:
             assert model.minutes_model is not None
             model.minutes_model.save_model(str(Path(tmp) / "minutes.txt"))
             for c, booster in model.points_models.items():
                 booster.save_model(str(Path(tmp) / f"points_m{c}.txt"))
-            calib.write_csv(Path(tmp) / "calibration_p60.csv")
+            for name, t in calib.items():
+                t.write_csv(Path(tmp) / f"calibration_{name}.csv")
+            calibration.plot(calib, Path(tmp))
             table.write_csv(Path(tmp) / "metrics.csv")
             mlflow.log_artifacts(tmp)
     print("\nlogged to MLflow experiment 'projections'")

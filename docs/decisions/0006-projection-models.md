@@ -21,6 +21,10 @@ deadline, scored for calibration and in the replay env.
 - Splits: train 2021-22 and 2022-23, validate 2023-24, test 2024-25 and 2025-26.
 - Metrics: CRPS, log loss over points bins, calibration curves, MAE against the form baseline,
   split by position. Every run is logged in MLflow with dataset version and params.
+- Calibration report (`diffpl.models.calibration`): reliability and ECE for P(60+ minutes)
+  and P(points >= 1, 2, 6, 10); randomized PIT histogram for the full distribution; 50% and
+  80% central interval coverage read off the PIT, so discrete bins do not inflate it. Split by
+  position, seeded, logged to MLflow as metrics, CSVs and PNGs.
 
 ## Alternatives considered
 
