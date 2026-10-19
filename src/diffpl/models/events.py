@@ -187,6 +187,8 @@ class Prediction:
     dist: np.ndarray  # rows x N_BINS
     expected: np.ndarray
     p60: np.ndarray
+    team: list[str]
+    sims: np.ndarray  # N_SIMS x rows of simulated points, joint across players
 
 
 @dataclass
@@ -372,6 +374,8 @@ class EventModel:
             dist=dist,
             expected=points.mean(axis=0),
             p60=(minutes >= 60).mean(axis=0),
+            team=players["team_name"].to_list(),
+            sims=points,
         )
 
     def _residual(

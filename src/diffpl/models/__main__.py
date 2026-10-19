@@ -10,6 +10,7 @@ Train on 2021-22 and 2022-23, early-stop on 2023-24, report on 2024-25 and 2025-
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import logging
 import tempfile
@@ -154,7 +155,10 @@ def events(
         if key not in cache:
             start = int(obs.season[:4]) - 1
             prev = data[f"{start}-{str(start + 1)[2:]}"]
-            cache[key] = model.predict(obs, prev, load_rules(obs.season))
+            # Drop the joint sims: eval and replay need marginals only, and 76 GWs of sims
+            # would hold close to 1 GB.
+            p = model.predict(obs, prev, load_rules(obs.season))
+            cache[key] = dataclasses.replace(p, sims=np.empty(0))
             log.info("events %s GW%d", obs.season, obs.gw)
         return cache[key]
 
