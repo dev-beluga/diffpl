@@ -35,8 +35,8 @@ PITCH_SHARE = np.array([0.0, 1 / 3, 1.0])  # share of the match on the pitch per
 MAX_EVENTS = 6  # goals, assists and goals conceded are clipped here for the points table
 N_BANDS = 4  # price quartiles within position
 SHARE_PRIOR = 10.0  # prior strength in team goals of pseudo-exposure
-MINUTES_PRIOR = 5.0  # prior strength in pseudo-matches
-DECAY = 0.85  # minutes weight per match back in time
+# Minutes prior strength (pseudo-matches) and per-match decay, tuned on the validation season.
+MINUTES_GRID = {"strength": (0.5, 1.0, 2.0, 5.0), "decay": (0.5, 0.6, 0.7, 0.85)}
 PREV_SEASON_WEIGHT = 0.5  # team model weight of last season's results
 N_SIMS = 2000
 N_DRAWS = 200  # posterior draws of team strengths
@@ -199,6 +199,8 @@ class EventModel:
     minutes_prior: dict[str, list[float]] = field(default_factory=dict)
     # "position|class|involved" -> residual points sample
     residuals: dict[str, list[int]] = field(default_factory=dict)
+    minutes_strength: float = 5.0
+    decay: float = 0.85
 
     def fit(self, seasons: list[SeasonData], rules: list[Rules]) -> EventModel:
         """Priors and residuals from whole training seasons."""
@@ -251,6 +253,33 @@ class EventModel:
             self.residuals[f"{pos}|{mc}|{int(inv)}"] = vals.astype(int).tolist()
         return self
 
+    def tune_minutes(self, valid: SeasonData) -> dict[tuple[float, float], float]:
+        """Grid-search minutes strength and decay by log loss of the minutes class on a
+        validation season. Players with exactly one match in the GW are scored. Sets the best
+        pair and returns the loss of every pair."""
+        targets = []
+        for gw in valid.gameweeks:
+            rows = valid.player_matches.filter(pl.col("gw") == gw)
+            one = rows.group_by("element_id").agg(pl.len(), pl.col("minutes").first())
+            one = one.filter(pl.col("len") == 1).select(
+                "element_id", minutes_class(pl.col("minutes")).alias("y")
+            )
+            targets.append((valid.observe(gw), one))
+        losses = {}
+        for k in MINUTES_GRID["strength"]:
+            for d in MINUTES_GRID["decay"]:
+                self.minutes_strength, self.decay = k, d
+                total, n = 0.0, 0
+                for obs, one in targets:
+                    df = self.player_params(obs).join(one, on="element_id")
+                    probs = df.select("p0", "p1", "p2").to_numpy()
+                    y = df["y"].to_numpy()
+                    total -= float(np.log(probs[np.arange(len(y)), y] + 1e-12).sum())
+                    n += len(y)
+                losses[(k, d)] = total / n
+        self.minutes_strength, self.decay = min(losses, key=losses.__getitem__)
+        return losses
+
     def player_params(self, obs: Observation) -> pl.DataFrame:
         """Per player at the deadline: team, position, goal and assist share, minutes probs."""
         market = _band(_market(obs.prices, obs.players), self.band_edges)
@@ -266,7 +295,7 @@ class EventModel:
                 age=pl.int_range(pl.len()).over("element_id"),
                 mclass=minutes_class(pl.col("minutes")),
             )
-            .with_columns(w=pl.lit(DECAY) ** pl.col("age"))
+            .with_columns(w=pl.lit(self.decay) ** pl.col("age"))
             .group_by("element_id")
             .agg(*[(pl.col("w") * (pl.col("mclass") == c)).sum().alias(f"c{c}") for c in range(3)])
         )
@@ -280,7 +309,8 @@ class EventModel:
         prior_m = np.array([self.minutes_prior[k] for k in keys])
         n = df["n"].to_numpy()
         counts = df.select("c0", "c1", "c2").to_numpy()
-        probs = (prior_m * MINUTES_PRIOR + counts) / (MINUTES_PRIOR + counts.sum(axis=1))[:, None]
+        k = self.minutes_strength
+        probs = (prior_m * k + counts) / (k + counts.sum(axis=1))[:, None]
         return df.with_columns(
             share_g=(prior_g * SHARE_PRIOR + df["k_g"].to_numpy()) / (SHARE_PRIOR + n),
             share_a=(prior_a * SHARE_PRIOR + df["k_a"].to_numpy()) / (SHARE_PRIOR + n),
@@ -358,7 +388,16 @@ class EventModel:
 
     def save(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
-        fields = ("seed", "band_edges", "goal_prior", "assist_prior", "minutes_prior", "residuals")
+        fields = (
+            "seed",
+            "band_edges",
+            "goal_prior",
+            "assist_prior",
+            "minutes_prior",
+            "residuals",
+            "minutes_strength",
+            "decay",
+        )
         (path / "events.json").write_text(json.dumps({f: getattr(self, f) for f in fields}))
 
     @classmethod

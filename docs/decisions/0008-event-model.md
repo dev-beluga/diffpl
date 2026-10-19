@@ -19,8 +19,10 @@ Team goals first, then split among players (`diffpl.models.events`). At each dea
    uncertainty into the simulation. Inputs are padded to fixed sizes so JAX compiles once.
 2. Player shares of team goals and assists while on the pitch: Gamma-Poisson posterior mean,
    prior per position and price quartile from the training seasons.
-3. Minutes class (0, 1-59, 60+): Dirichlet-multinomial on the player's matches, decayed by
-   0.85 per match, prior per position and price quartile.
+3. Minutes class (0, 1-59, 60+): Dirichlet-multinomial on the player's matches with a decay
+   per match, prior per position and price quartile. Prior strength and decay are picked by
+   minutes log loss on the validation season (2023-24); the first run tuned them to 0.5
+   and 0.7.
 4. 2000 simulations per fixture: sample both teams' goals, give each goal to a scorer and an
    assister in proportion to share times time on the pitch, with an "other" slot. Clean
    sheets and goals conceded come from the opponent's goals. Points come from
@@ -49,3 +51,11 @@ B runs through the same `models train` path as A (`--model events`) and is gated
 - Bonus is not modelled from BPS. The residual keeps its link to goals and assists only
   through the "involved" split.
 - `defensive_contribution` is not in the pipeline, so DefCon points live in the residual.
+
+## Results (2026-10-19)
+
+- Hand-set minutes prior (5.0, decay 0.85): minutes were under-confident, ECE up to 0.10,
+  RPS +0.066 vs champion. Rejected by the gate.
+- Tuned (0.5, 0.7): ECE and coverage pass, RPS still +0.022 (CI +0.018 to +0.027) vs
+  champion, replay -166 and -147 points. Rejected; A stays champion.
+- Strength 0.5 is the edge of the grid, so the grid should go lower before more tuning.

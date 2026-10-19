@@ -145,6 +145,8 @@ def events(
     from diffpl.rules import load_rules
 
     model = ev.EventModel(seed=seed).fit([data[s] for s in TRAIN], [load_rules(s) for s in TRAIN])
+    losses = model.tune_minutes(data[VALID[0]])
+    log.info("minutes log loss by (strength, decay): %s", losses)
     cache: dict[tuple[str, int], ev.Prediction] = {}
 
     def predict(obs: Observation) -> ev.Prediction:
@@ -188,9 +190,9 @@ def events(
 
     params: dict[str, object] = {
         k.lower(): getattr(ev, k)
-        for k in ("N_SIMS", "N_DRAWS", "SVI_STEPS", "SHARE_PRIOR", "MINUTES_PRIOR", "DECAY")
+        for k in ("N_SIMS", "N_DRAWS", "SVI_STEPS", "SHARE_PRIOR", "PREV_SEASON_WEIGHT")
     }
-    params["prev_season_weight"] = ev.PREV_SEASON_WEIGHT
+    params["minutes_strength"], params["decay"] = model.minutes_strength, model.decay
     return (
         model,
         np.concatenate(dists)[rows["row"].to_numpy()],
