@@ -16,11 +16,11 @@ def scores(rps: np.ndarray) -> pl.DataFrame:
 def metrics(rps: float, ece: float = 0.01, cov: float = 0.0, replay: float = 2000) -> dict:
     m: dict[str, float] = {"replay.2024-25.total_points": replay}
     for pos in gate.POSITIONS:
-        m[f"two_part.{pos}.rps"] = rps
+        m[f"model.{pos}.rps"] = rps
         for e in gate.EVENTS:
-            m[f"two_part.{pos}.ece_{e}"] = ece
+            m[f"model.{pos}.ece_{e}"] = ece
         for level in gate.LEVELS:
-            m[f"two_part.{pos}.coverage{level}"] = level / 100 + cov
+            m[f"model.{pos}.coverage{level}"] = level / 100 + cov
     return m
 
 

@@ -37,7 +37,7 @@ this rule the same way every time.
 
 - One replay per season is a single noisy run, so the replay check is a tolerance, not a
   strict win. The RPS bootstrap carries the significance test.
-- Metric keys use the `two_part` prefix. Challenger B must log under the same keys, or the
-  gate must read the model name from the run params.
+- Metric keys use the `model.` prefix for every model kind, so any challenger is gated
+  the same way.
 - Thresholds are constants in `gate.py`. Changing one is a model-policy change and needs an
   ADR update.

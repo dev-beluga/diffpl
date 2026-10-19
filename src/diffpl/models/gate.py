@@ -64,13 +64,13 @@ def decide(
     mean, lo, hi = paired_bootstrap(champion_scores, challenger_scores, seed)
     d.check(hi < 0, f"RPS diff {mean:+.4f}, {CI:.0%} CI [{lo:+.4f}, {hi:+.4f}] below 0")
     for pos in POSITIONS:
-        key = f"two_part.{pos}.rps"
+        key = f"model.{pos}.rps"
         delta = challenger_metrics[key] - champion_metrics[key]
         d.check(delta <= POSITION_RPS_TOLERANCE, f"{pos} RPS change {delta:+.4f}")
-        worst = max(challenger_metrics[f"two_part.{pos}.ece_{e}"] for e in EVENTS)
+        worst = max(challenger_metrics[f"model.{pos}.ece_{e}"] for e in EVENTS)
         d.check(worst <= MAX_ECE, f"{pos} worst ECE {worst:.4f} <= {MAX_ECE}")
         for level in LEVELS:
-            cov = challenger_metrics[f"two_part.{pos}.coverage{level}"]
+            cov = challenger_metrics[f"model.{pos}.coverage{level}"]
             ok = abs(cov - level / 100) <= COVERAGE_TOLERANCE
             d.check(ok, f"{pos} {level}% coverage {cov:.3f}")
     for season in seasons:
