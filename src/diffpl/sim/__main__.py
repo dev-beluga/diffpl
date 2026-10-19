@@ -108,9 +108,9 @@ def eval_cmd(events_version: str | None) -> None:
             got = dict(zip(pts["element_id"].to_list(), pts["total_points"].to_list(), strict=True))
             actual = np.array([got.get(e, 0) for e in j.element_id.tolist()], dtype=float)
             joints = {
-                "independent": shuffle_columns(j.sims, rng),
-                "events": j.events,
-                "hybrid": j.sims,
+                "independent": shuffle_columns(j.hybrid, rng),
+                "events": j.sims,
+                "hybrid": j.hybrid,
             }
             rows += [{"season": season, "gw": gw, **r} for r in score_teams(j.team, actual, joints)]
             log.info("sim %s GW%d", season, gw)

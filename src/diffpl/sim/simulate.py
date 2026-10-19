@@ -18,8 +18,8 @@ from diffpl.sim.copula import match_marginals
 class Joint:
     element_id: np.ndarray
     team: list[str]
-    events: np.ndarray  # draws x players, event model's own points
-    sims: np.ndarray  # draws x players, champion marginals with event-model dependence
+    sims: np.ndarray  # draws x players, the event model's joint points (ADR-0009 results)
+    hybrid: np.ndarray  # draws x players, champion marginals with event-model dependence
 
 
 def simulate(
@@ -36,5 +36,5 @@ def simulate(
     dist = champion.predict_dist(feats)[[row[e] for e in p.element_id.tolist()]]
     assert champion.bin_values is not None
     rng = np.random.default_rng([seed, obs.gw])
-    sims = match_marginals(p.sims, dist, champion.bin_values, rng)
-    return Joint(p.element_id, p.team, p.sims, sims)
+    hybrid = match_marginals(p.sims, dist, champion.bin_values, rng)
+    return Joint(p.element_id, p.team, p.sims, hybrid)

@@ -148,14 +148,141 @@ def replay_tab() -> None:
     )
 
 
+POSITIONS = ("ALL", "GKP", "DEF", "MID", "FWD")
+EVENTS = ("p60", "pts_ge1", "pts_ge2", "pts_ge6", "pts_ge10")
+
+
+@st.cache_data(ttl=60, show_spinner="Reading MLflow")
+def registry() -> pl.DataFrame:
+    """One row per registered `projections` version with its run's headline metrics."""
+    import mlflow
+    from mlflow import MlflowClient
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    client = MlflowClient()
+    aliases: dict[str, str] = {}
+    for alias, version in client.get_registered_model("projections").aliases.items():
+        aliases[version] = alias
+    rows = []
+    for v in client.search_model_versions("name='projections'"):
+        run = client.get_run(v.run_id).data
+        m = run.metrics
+        ece = [m[k] for k in (f"model.ALL.ece_{e}" for e in EVENTS) if k in m]
+        rows.append(
+            {
+                "version": int(v.version),
+                "alias": aliases.get(v.version, ""),
+                "model": run.params.get("model", ""),
+                "gate": v.tags.get("gate", ""),
+                "rps": m.get("model.ALL.rps", m.get("two_part.ALL.rps")),
+                "worst_ece": max(ece) if ece else None,
+                "cov50": m.get("model.ALL.coverage50"),
+                "cov80": m.get("model.ALL.coverage80"),
+                "replay_2024_25": m.get("replay.2024-25.total_points"),
+                "replay_2025_26": m.get("replay.2025-26.total_points"),
+                "run_id": v.run_id,
+                "gate_reasons": v.tags.get("gate_reasons", ""),
+            }
+        )
+    return pl.DataFrame(rows).sort("version", descending=True)
+
+
+@st.cache_data(show_spinner="Downloading plot")
+def artifact(run_id: str, path: str) -> str | None:
+    import mlflow
+    from mlflow.exceptions import MlflowException
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    try:
+        return str(mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path=path))
+    except (MlflowException, OSError):
+        return None
+
+
+@st.cache_data(ttl=60)
+def sim_eval() -> pl.DataFrame:
+    """Latest joint-simulation eval: team-total CRPS and coverage per joint model."""
+    import mlflow
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    from mlflow import MlflowClient
+
+    client = MlflowClient()
+    runs = client.search_runs(
+        [e.experiment_id for e in client.search_experiments()],
+        filter_string="attributes.run_name = 'sim_eval'",
+        order_by=["attributes.start_time DESC"],
+        max_results=1,
+    )
+    if not runs:
+        return pl.DataFrame()
+    m = runs[0].data.metrics
+    return pl.DataFrame(
+        [
+            {
+                "joint model": method,
+                "crps": m[f"sim.{method}.crps"],
+                "cov50": m[f"sim.{method}.cov50"],
+                "cov80": m[f"sim.{method}.cov80"],
+            }
+            for method in ("events", "hybrid", "independent")
+        ]
+    ).sort("crps")
+
+
+def models_tab() -> None:
+    try:
+        reg = registry()
+    except Exception as exc:  # MLflow down or no registered model yet
+        st.warning(f"MLflow not reachable or empty: {exc}")
+        return
+    st.subheader("Model registry (test seasons 2024-25, 2025-26)")
+    st.caption("RPS: lower is better. Coverage: calibrated means 0.50 and 0.80. Gate: ADR-0007.")
+    st.dataframe(reg.drop("run_id", "gate_reasons"), hide_index=True)
+
+    gated = reg.filter(pl.col("gate_reasons") != "")
+    if gated.height:
+        st.subheader("Promotion gate")
+        v = st.selectbox("Version", gated["version"].to_list())
+        reasons = gated.filter(pl.col("version") == v)["gate_reasons"][0]
+        st.dataframe(
+            pl.DataFrame(
+                {
+                    "result": [r.split(" ", 1)[0] for r in reasons.splitlines()],
+                    "check": [r.split(" ", 1)[-1] for r in reasons.splitlines()],
+                }
+            ),
+            hide_index=True,
+        )
+
+    st.subheader("Calibration")
+    c1, c2 = st.columns(2)
+    v = c1.selectbox("Model version", reg["version"].to_list(), key="calib_version")
+    pos = c2.selectbox("Position", POSITIONS)
+    run_id = reg.filter(pl.col("version") == v)["run_id"][0]
+    path = artifact(run_id, f"calibration_{pos}.png")
+    if path:
+        st.image(path)
+    else:
+        st.info("No calibration plots for this run (logged before the calibration report).")
+
+    sim = sim_eval()
+    if sim.height:
+        st.subheader("Joint simulation: team totals per GW")
+        st.caption("Sample CRPS of each team's GW total (lower is better). ADR-0009.")
+        st.dataframe(sim.with_columns(pl.col(pl.Float64).round(3)), hide_index=True)
+
+
 def main() -> None:
     st.set_page_config(page_title="DiffPL", layout="wide")
     st.title("DiffPL")
-    league_t, replay_t = st.tabs(["League", "Replay"])
+    league_t, replay_t, models_t = st.tabs(["League", "Replay", "Models"])
     with league_t:
         league_tab()
     with replay_t:
         replay_tab()
+    with models_t:
+        models_tab()
 
 
 main()
