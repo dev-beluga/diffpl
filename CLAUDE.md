@@ -154,9 +154,9 @@ docs/decisions/   # ADRs, one per major choice
 
 ## Roadmap
 
-- [ ] Phase 0: repo, Docker Compose (Postgres, MLflow), FPL ingestion, historical load, dbt models, rules config, CI (ruff, mypy, pytest)
-- [ ] Phase 1: Season Replay Env, baseline managers (template, form, fixtures), metrics, leakage tests in CI
-- [ ] Phase 2: projections (baseline, LightGBM, probabilistic), calibration report, MLflow registry, champion/challenger
+- [x] Phase 0: repo, Docker Compose (Postgres, MLflow), FPL ingestion, historical load, dbt models, rules config, CI (ruff, mypy, pytest)
+- [x] Phase 1: Season Replay Env, baseline managers (template, form, fixtures), metrics, leakage tests in CI
+- [x] Phase 2: projections (baseline, LightGBM, probabilistic), calibration report, MLflow registry, champion/challenger
 - [ ] Phase 3: simulator, MILP multi-GW planner, rank-aware objective
 - [ ] Phase 4: team-news NLP, golden set, eval harness in CI, prompt-injection tests
 - [ ] Phase 5: MCP server, agents, agent harness, Langfuse tracing, agent league, model and cost comparison
@@ -173,7 +173,7 @@ docs/decisions/   # ADRs, one per major choice
 
 ## Current phase
 
-Phase 0.
+Phase 3.
 
 ## Commands
 

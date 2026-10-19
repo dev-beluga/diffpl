@@ -13,7 +13,9 @@ def scores(rps: np.ndarray) -> pl.DataFrame:
     )
 
 
-def metrics(rps: float, ece: float = 0.01, cov: float = 0.0, replay: float = 2000) -> dict:
+def metrics(
+    rps: float, ece: float = 0.01, cov: float = 0.0, replay: float = 2000
+) -> dict[str, float]:
     m: dict[str, float] = {"replay.2024-25.total_points": replay}
     for pos in gate.POSITIONS:
         m[f"model.{pos}.rps"] = rps

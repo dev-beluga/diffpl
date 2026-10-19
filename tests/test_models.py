@@ -79,7 +79,7 @@ def test_overconfident_forecast_undercovers_and_shows_u_shaped_pit() -> None:
     assert set(tables["ece"]["event"]) == {"p60", "pts_ge1", "pts_ge2", "pts_ge6", "pts_ge10"}
 
 
-def test_plot_writes_one_png_per_position(tmp_path) -> None:
+def test_plot_writes_one_png_per_position(tmp_path: Path) -> None:
     rng = np.random.default_rng(0)
     dist = rng.dirichlet(np.ones(N_BINS), size=400)
     pos = np.array(["DEF", "MID"] * 200)
