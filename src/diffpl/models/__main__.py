@@ -339,7 +339,9 @@ def promote_cmd(version: str | None) -> None:
 
 
 def replay_cmd() -> None:
-    """Replay the test seasons: two-part model manager vs the heuristic baselines."""
+    """Replay the test seasons: two-part model managers (greedy and MILP planner) vs the
+    heuristic baselines."""
+    from diffpl.optim.planner import HORIZON, PlannerManager, fixture_horizon
     from diffpl.replay.baselines import GreedyManager, make_baseline
     from diffpl.replay.run import run_season
     from diffpl.rules import load_rules
@@ -351,7 +353,8 @@ def replay_cmd() -> None:
     for season in TEST:
         data, rules = load_season(engine, season), load_rules(season)
         managers = [make_baseline(b, rules) for b in ("template", "form", "fixtures")]
-        for m in [GreedyManager("two_part", rules, score), *managers]:
+        planner = PlannerManager("planner", rules, fixture_horizon(score, HORIZON))
+        for m in [GreedyManager("two_part", rules, score), planner, *managers]:
             r = run_season(data, rules, m).summary()
             print(
                 f"{season}  {r['manager']:<9} {r['total_points']:>5} pts  "
