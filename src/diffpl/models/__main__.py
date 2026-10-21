@@ -344,6 +344,7 @@ def replay_cmd() -> None:
     from diffpl.optim.planner import HORIZON, PlannerManager, fixture_horizon
     from diffpl.replay.baselines import GreedyManager, make_baseline
     from diffpl.replay.run import run_season
+    from diffpl.replay.types import Manager
     from diffpl.rules import load_rules
 
     engine = create_engine(get_settings().database_url)
@@ -354,7 +355,8 @@ def replay_cmd() -> None:
         data, rules = load_season(engine, season), load_rules(season)
         managers = [make_baseline(b, rules) for b in ("template", "form", "fixtures")]
         planner = PlannerManager("planner", rules, fixture_horizon(score, HORIZON))
-        for m in [GreedyManager("two_part", rules, score), planner, *managers]:
+        replayed: list[Manager] = [GreedyManager("two_part", rules, score), planner, *managers]
+        for m in replayed:
             r = run_season(data, rules, m).summary()
             print(
                 f"{season}  {r['manager']:<9} {r['total_points']:>5} pts  "
