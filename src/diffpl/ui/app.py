@@ -273,16 +273,94 @@ def models_tab() -> None:
         st.dataframe(sim.with_columns(pl.col(pl.Float64).round(3)), hide_index=True)
 
 
+LIVE_SEASON = "2026-27"
+N_PLANS = 5
+
+
+@st.cache_resource(show_spinner="Loading champion model")
+def champion_model() -> object:
+    import mlflow
+    from mlflow import MlflowClient
+
+    from diffpl.models.two_part import TwoPartModel
+    from diffpl.sim.__main__ import load_version
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    return TwoPartModel.load(load_version(MlflowClient(), "champion", None))
+
+
+@st.cache_data(ttl=600, show_spinner="Planning this GW")
+def this_gw(entry_id: int) -> tuple[int, pl.DataFrame]:
+    """Next deadline's top plans for a team by expected points (ADR-0010)."""
+    from datetime import UTC, datetime
+
+    from diffpl.models.__main__ import two_part_scorer
+    from diffpl.models.two_part import TwoPartModel
+    from diffpl.optim.live import recommend
+    from diffpl.optim.planner import HORIZON, fixture_horizon
+    from diffpl.replay.data import load_live
+
+    champion = champion_model()
+    assert isinstance(champion, TwoPartModel)
+    data = load_live(engine(), LIVE_SEASON)
+    upcoming = data.deadlines.filter(pl.col("deadline_time") > datetime.now(UTC))["gw"]
+    if upcoming.is_empty():
+        raise LookupError("no upcoming deadline this season")
+    obs = data.observe(int(upcoming.min()))  # type: ignore[arg-type]
+    rules = load_rules(LIVE_SEASON)
+    project = fixture_horizon(two_part_scorer(champion), HORIZON)
+    options = recommend(engine(), rules, obs, entry_id, project, N_PLANS)
+    name = dict(zip(obs.players["element_id"], obs.players["player_name"], strict=True))
+    rows = [
+        {
+            "plan": k + 1,
+            "EV (horizon)": round(o.plan.objective, 1),
+            "hits": o.plan.hits,
+            "transfers": ", ".join(
+                f"{name.get(t.out_id, t.out_id)} > {name.get(t.in_id, t.in_id)}"
+                for t in o.plan.transfers
+            )
+            or "none",
+            "captain": name.get(o.decision.captain, o.decision.captain),
+            "XI": ", ".join(str(name.get(i, i)) for i in o.decision.lineup),
+        }
+        for k, o in enumerate(options)
+    ]
+    return obs.gw, pl.DataFrame(rows)
+
+
+def planner_tab() -> None:
+    st.subheader("This GW: plans for your team")
+    st.caption(
+        "Top plans by expected points over the next GWs (ADR-0010). Your team comes from the "
+        "league ingest (`diffpl.ingest league --id <id>`) and player data from "
+        "`diffpl.ingest fpl`. Selling prices are taken as current prices (purchase prices are "
+        "private). DiffPL never writes to your FPL account."
+    )
+    entry_id = int(st.number_input("Your team id", min_value=0, step=1, value=0))
+    if not entry_id or not st.button("Plan this GW"):
+        return
+    try:
+        gw, plans = this_gw(entry_id)
+    except LookupError as exc:
+        st.warning(str(exc))
+        return
+    st.markdown(f"**GW{gw}.** Plan 1 is the best by expected points.")
+    st.dataframe(plans, hide_index=True)
+
+
 def main() -> None:
     st.set_page_config(page_title="DiffPL", layout="wide")
     st.title("DiffPL")
-    league_t, replay_t, models_t = st.tabs(["League", "Replay", "Models"])
+    league_t, replay_t, models_t, planner_t = st.tabs(["League", "Replay", "Models", "Planner"])
     with league_t:
         league_tab()
     with replay_t:
         replay_tab()
     with models_t:
         models_tab()
+    with planner_t:
+        planner_tab()
 
 
 main()

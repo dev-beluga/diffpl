@@ -41,6 +41,18 @@ Chosen: C. This ADR covers its first half, A. The rank-aware layer gets its own 
 - XI, bench order and captain for the played GW come from `best_lineup` on the first GW's
   projection, the same choice the MILP valued.
 
+## Live use
+
+The dashboard's Planner tab shows the top 5 plans (distinct first-GW squads, no-good cuts) for
+a real team at the next deadline (`diffpl.optim.live`):
+
+- Live season data comes from the FPL API: element-summary history becomes
+  `stg_fpl__player_gameweeks` (same columns as vaastav), and `load_live` builds a `SeasonData`
+  in `load_season`'s shape, so the champion's features run unchanged.
+- The squad comes from the league ingest. Bank comes from the entry history; free transfers
+  are rebuilt from transfer and chip history with the season rules.
+- Purchase prices are private, so selling prices are taken as current prices.
+
 ## Evaluation
 
 `python -m diffpl.models replay` now replays the test seasons with the planner next to the
