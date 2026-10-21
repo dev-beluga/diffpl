@@ -1,4 +1,4 @@
-"""This GW's plans for a real FPL team: the top plans by expected points (ADR-0010).
+"""This GW's plan for a real FPL team: EV plans ranked by P(beat a rival) (ADR-0011).
 
 Teams come from the league ingest (`diffpl.ingest league`), read-only. Known gaps, all from
 what the public API exposes:
@@ -9,13 +9,15 @@ what the public API exposes:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import polars as pl
 from sqlalchemy import Engine, text
 
-from diffpl.optim.planner import Plan, Projector, plans
+from diffpl.leagues.rules import LeagueRules
+from diffpl.optim.planner import Plan, Projector
+from diffpl.optim.rival import Draws, RivalView, rank_plans
 from diffpl.replay.baselines import best_lineup
 from diffpl.replay.data import Observation
 from diffpl.replay.engine import Market, next_free_transfers
@@ -41,6 +43,7 @@ class Entry:
 class Option:
     plan: Plan
     decision: Decision  # XI, bench and captain for this GW
+    p_beat: float | None
 
 
 def _query(engine: Engine, sql: str, entry_id: int) -> pl.DataFrame:
@@ -110,16 +113,25 @@ def load_entry(engine: Engine, entry_id: int, rules: Rules, market: Market, next
 def recommend(
     engine: Engine,
     rules: Rules,
+    league: LeagueRules,
     obs: Observation,
     entry_id: int,
+    rival_id: int | None,
     project: Projector,
+    simulate: Callable[[Observation], Draws],
     n_plans: int,
 ) -> list[Option]:
-    """Up to `n_plans` plans with distinct squads for the deadline in `obs`, best EV first."""
+    """Plans for the deadline in `obs`, EV order, each with P(beat rival) when one is given."""
     market = Market.at(obs.prices, obs.players)
     me = load_entry(engine, entry_id, rules, market, obs.gw)
+    rival = None
+    if rival_id is not None:
+        r = load_entry(engine, rival_id, rules, market, obs.gw)
+        rival = RivalView(rival_id, r.last)
     xp = project(obs)
-    found = plans(rules, market, me.squad, xp, rules.special_events, n=n_plans)
-    return [
-        Option(p, best_lineup(rules, list(p.squad), xp[obs.gw], market.position)) for p in found
-    ]
+    found, probs = rank_plans(rules, league, obs, market, me.squad, xp, simulate, rival, n_plans)
+    out = []
+    for k, p in enumerate(found):
+        d = best_lineup(rules, list(p.squad), xp[obs.gw], market.position)
+        out.append(Option(p, d, probs[k] if probs else None))
+    return out

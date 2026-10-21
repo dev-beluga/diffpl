@@ -273,47 +273,96 @@ def models_tab() -> None:
         st.dataframe(sim.with_columns(pl.col(pl.Float64).round(3)), hide_index=True)
 
 
+@st.cache_data(ttl=60)
+def planner_eval() -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Latest planner eval (ADR-0011): season summary and per-GW results."""
+    import mlflow
+
+    mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
+    from mlflow import MlflowClient
+
+    client = MlflowClient()
+    runs = client.search_runs(
+        [e.experiment_id for e in client.search_experiments()],
+        filter_string="attributes.run_name = 'planner_eval'",
+        order_by=["attributes.start_time DESC"],
+        max_results=1,
+    )
+    if not runs:
+        return pl.DataFrame(), pl.DataFrame()
+    run_id = runs[0].info.run_id
+    paths = [artifact(run_id, f) for f in ("planner_summary.csv", "planner_gws.csv")]
+    if None in paths:
+        return pl.DataFrame(), pl.DataFrame()
+    return pl.read_csv(str(paths[0])), pl.read_csv(str(paths[1]))
+
+
 LIVE_SEASON = "2026-27"
-N_PLANS = 5
 
 
-@st.cache_resource(show_spinner="Loading champion model")
-def champion_model() -> object:
+@st.cache_resource(show_spinner="Loading champion and event model")
+def live_models() -> tuple[object, object]:
     import mlflow
     from mlflow import MlflowClient
 
+    from diffpl.models.events import EventModel
     from diffpl.models.two_part import TwoPartModel
     from diffpl.sim.__main__ import load_version
 
     mlflow.set_tracking_uri(get_settings().mlflow_tracking_uri)
-    return TwoPartModel.load(load_version(MlflowClient(), "champion", None))
+    client = MlflowClient()
+    return (
+        TwoPartModel.load(load_version(client, "champion", None)),
+        EventModel.load(load_version(client, "challenger", None)),
+    )
 
 
-@st.cache_data(ttl=600, show_spinner="Planning this GW")
-def this_gw(entry_id: int) -> tuple[int, pl.DataFrame]:
-    """Next deadline's top plans for a team by expected points (ADR-0010)."""
+@st.cache_data(ttl=600, show_spinner="Planning this GW: MILP plans and simulated draws")
+def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, pl.DataFrame]:
+    """Next deadline's plans for a team, EV order, with P(beat rival)."""
     from datetime import UTC, datetime
 
     from diffpl.models.__main__ import two_part_scorer
+    from diffpl.models.events import EventModel
     from diffpl.models.two_part import TwoPartModel
     from diffpl.optim.live import recommend
     from diffpl.optim.planner import HORIZON, fixture_horizon
-    from diffpl.replay.data import load_live
+    from diffpl.optim.rival import N_PLANS, Draws
+    from diffpl.replay.data import Observation, load_live
+    from diffpl.sim.simulate import simulate
 
-    champion = champion_model()
-    assert isinstance(champion, TwoPartModel)
+    champion, events = live_models()
+    assert isinstance(champion, TwoPartModel) and isinstance(events, EventModel)
     data = load_live(engine(), LIVE_SEASON)
-    upcoming = data.deadlines.filter(pl.col("deadline_time") > datetime.now(UTC))["gw"]
+    now = datetime.now(UTC)
+    upcoming = data.deadlines.filter(pl.col("deadline_time") > now)["gw"]
     if upcoming.is_empty():
         raise LookupError("no upcoming deadline this season")
     obs = data.observe(int(upcoming.min()))  # type: ignore[arg-type]
     rules = load_rules(LIVE_SEASON)
-    project = fixture_horizon(two_part_scorer(champion), HORIZON)
-    options = recommend(engine(), rules, obs, entry_id, project, N_PLANS)
+    prev = load_season(engine(), "2025-26")
+    seed = get_settings().seed
+
+    def draws(o: Observation) -> Draws:
+        j = simulate(o, champion, events, prev, rules, seed)
+        return Draws(j.element_id, j.hybrid)
+
+    options = recommend(
+        engine(),
+        rules,
+        load_league_rules(league_id),
+        obs,
+        entry_id,
+        rival_id,
+        fixture_horizon(two_part_scorer(champion), HORIZON),
+        draws,
+        N_PLANS,
+    )
     name = dict(zip(obs.players["element_id"], obs.players["player_name"], strict=True))
     rows = [
         {
             "plan": k + 1,
+            "P(beat rival)": o.p_beat,
             "EV (horizon)": round(o.plan.objective, 1),
             "hits": o.plan.hits,
             "transfers": ", ".join(
@@ -329,24 +378,91 @@ def this_gw(entry_id: int) -> tuple[int, pl.DataFrame]:
     return obs.gw, pl.DataFrame(rows)
 
 
-def planner_tab() -> None:
-    st.subheader("This GW: plans for your team")
+def this_gw_section() -> None:
+    st.subheader("This GW: plan for your team")
     st.caption(
-        "Top plans by expected points over the next GWs (ADR-0010). Your team comes from the "
-        "league ingest (`diffpl.ingest league --id <id>`) and player data from "
-        "`diffpl.ingest fpl`. Selling prices are taken as current prices (purchase prices are "
-        "private). DiffPL never writes to your FPL account."
+        "Teams come from the league ingest (`diffpl.ingest league --id <id>`) and player data "
+        "from `diffpl.ingest fpl`. Selling prices are taken as current prices (purchase prices "
+        "are private). DiffPL never writes to your FPL account."
     )
-    entry_id = int(st.number_input("Your team id", min_value=0, step=1, value=0))
-    if not entry_id or not st.button("Plan this GW"):
-        return
+    c1, c2, c3 = st.columns(3)
+    league_id = int(c1.number_input("League id", min_value=1, step=1, value=314, key="p_lg"))
+    entry_id = int(c2.number_input("Your team id", min_value=0, step=1, value=0, key="p_me"))
     try:
-        gw, plans = this_gw(entry_id)
+        data = league(league_id)
     except LookupError as exc:
         st.warning(str(exc))
         return
-    st.markdown(f"**GW{gw}.** Plan 1 is the best by expected points.")
-    st.dataframe(plans, hide_index=True)
+    names = dict(zip(data.managers["entry_id"], data.managers["entry_name"], strict=True))
+    rivals = [e for e in names if e != entry_id]
+    rival = c3.selectbox(
+        "Rival", [None, *rivals], format_func=lambda e: "none (EV only)" if e is None else names[e]
+    )
+    if not entry_id or not st.button("Plan this GW"):
+        return
+    try:
+        gw, plans = this_gw(league_id, entry_id, rival)
+    except LookupError as exc:
+        st.warning(str(exc))
+        return
+    best = 0
+    if rival is not None:
+        best = int(plans["P(beat rival)"].arg_max() or 0)
+    st.markdown(f"**GW{gw}: play plan {best + 1}.** Plan 1 is the best by expected points.")
+    st.dataframe(
+        plans.with_columns(pl.col(pl.Float64).round(3)) if rival else plans.drop("P(beat rival)"),
+        hide_index=True,
+    )
+
+
+def planner_tab() -> None:
+    this_gw_section()
+    try:
+        summary, gws = planner_eval()
+    except Exception as exc:  # MLflow down
+        st.warning(f"MLflow not reachable: {exc}")
+        return
+    if summary.is_empty():
+        st.info("No planner eval yet. Run `uv run python -m diffpl.optim eval`.")
+        return
+    st.subheader("Planners vs a rival (test seasons)")
+    st.caption(
+        "Rival: the greedy champion manager. h2h: share of GWs won, ties count half. "
+        "planner maximizes expected points (ADR-0010); rank_aware picks among the top 10 "
+        "plans by P(beat rival) on simulated draws (ADR-0011)."
+    )
+    st.dataframe(summary.with_columns(pl.col("h2h").round(3)), hide_index=True)
+
+    season = st.selectbox("Season", summary["season"].unique(maintain_order=True).to_list())
+    sel = gws.filter(pl.col("season") == season).sort("gw")
+    margin = (
+        sel.with_columns(
+            (pl.col("points") - pl.col("rival_points")).cum_sum().over("manager").alias("ahead")
+        )
+        .pivot(on="manager", index="gw", values="ahead")
+        .sort("gw")
+    )
+    st.markdown("**Cumulative points ahead of the rival**")
+    st.line_chart(margin.to_pandas().set_index("gw"))
+
+    picks = sel.filter(pl.col("manager") == "rank_aware", pl.col("p_beat_chosen").is_not_null())
+    moved = picks.filter(pl.col("chosen_plan") > 0)
+    st.markdown(
+        f"**Deadlines where P(beat rival) overruled the EV-best plan: {moved.height} of "
+        f"{picks.height}**"
+    )
+    st.dataframe(
+        moved.select(
+            "gw",
+            pl.col("p_beat_ev_plan").round(3).alias("P(beat) EV plan"),
+            pl.col("p_beat_chosen").round(3).alias("P(beat) chosen"),
+            "chosen_plan",
+            "transfers",
+            "points",
+            "rival_points",
+        ),
+        hide_index=True,
+    )
 
 
 def main() -> None:
