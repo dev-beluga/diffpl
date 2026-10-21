@@ -1,6 +1,7 @@
 """MILP planner: legal squads, hits only when they pay, and decisions blind to the future."""
 
 from collections.abc import Callable
+from itertools import pairwise
 
 import pytest
 from test_replay_baselines import Recorder, poison_future, varied_season
@@ -53,7 +54,7 @@ def test_hit_taken_only_when_gain_beats_its_cost() -> None:
     for gain, expect_hit in ((1.0, False), (6.0, True)):
         xp = {g: {i: 2.0 + (gain if i == 15 else 0.0) for i in IDS} for g in (2, 3)}
         p = plan(RULES, market(), owned(free_transfers=0), xp)
-        assert (p.hits == 1) is expect_hit
+        assert (p.hits == RULES.transfers.hit_cost) is expect_hit
         assert (15 in p.squad) is expect_hit
 
 
@@ -91,3 +92,14 @@ def test_poisoned_future_does_not_change_decisions(from_gw: int) -> None:
     run_season(data, RULES, clean)
     run_season(poison_future(data, from_gw), RULES, dirty)
     assert clean.log[:from_gw] == dirty.log[:from_gw]
+
+
+def test_top_plans_have_distinct_first_gw_squads_best_first() -> None:
+    from diffpl.optim.planner import plans
+
+    xp = flat([2, 3], lambda g, i: 2.0 + (0.5 if i in (15, 19) else 0.0))
+    found = plans(RULES, market(), owned(free_transfers=1), xp, n=4)
+    assert len(found) == 4
+    assert len({p.squad for p in found}) == 4
+    assert all(a.objective >= b.objective - 1e-6 for a, b in pairwise(found))
+    assert found[0].squad == plan(RULES, market(), owned(free_transfers=1), xp).squad

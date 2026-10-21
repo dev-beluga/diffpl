@@ -67,8 +67,9 @@ def fixture_horizon(score: Callable[[Observation], dict[int, float]], horizon: i
 class Plan:
     squad: tuple[int, ...]  # the first GW's 15
     transfers: tuple[Transfer, ...]  # the first GW's moves
-    hits: int  # paid transfers in the first GW
+    hits: int  # points deducted in the first GW
     objective: float
+    first_gw: float  # the objective's first-GW part: XI, captain and bench points less hits
 
 
 def candidates(rules: Rules, xp: Projection, market: Market, owned: set[int]) -> list[int]:
@@ -92,7 +93,21 @@ def plan(
     xp: Projection,
     special_events: Mapping[str, int] | None = None,
 ) -> Plan:
-    """Solve the horizon MILP. `squad` None picks an initial squad free of transfer rules."""
+    """The best plan by weighted expected points."""
+    return plans(rules, market, squad, xp, special_events, n=1)[0]
+
+
+def plans(
+    rules: Rules,
+    market: Market,
+    squad: SquadState | None,
+    xp: Projection,
+    special_events: Mapping[str, int] | None = None,
+    n: int = 1,
+) -> list[Plan]:
+    """Solve the horizon MILP, then re-solve with a cut on each found first-GW squad to get
+    up to `n` plans with distinct first-GW squads, best first. `squad` None picks an initial
+    squad free of transfer rules."""
     events = special_events or {}
     gws = sorted(xp)
     owned = {p.element_id: p for p in squad.picks} if squad else {}
@@ -118,7 +133,7 @@ def plan(
     bank = {g: h.addVariable(lb=0) for g in gws}
     ft = {g: h.addIntegral(lb=0, ub=rules.transfers.max_banked) for g in gws}
     hits = {g: h.addIntegral(lb=0) for g in gws}
-    n = {g: sum(buy[i, g] for i in players) for g in gws}  # transfers made
+    moves = {g: sum(buy[i, g] for i in players) for g in gws}  # transfers made
 
     objective = 0.0 * bank[gws[0]]
     clubs = Counter(market.team[i] for i in owned)
@@ -149,7 +164,7 @@ def plan(
                 bank[g]
                 == rules.squad.budget_tenths - sum(market.price[i] * x[i, g] for i in players)
             )
-            h.addConstr(n[g] == 0)
+            h.addConstr(moves[g] == 0)
             h.addConstr(hits[g] == 0)
             continue
         prev_bank = squad.bank if t == 0 and squad else bank[gws[t - 1]]
@@ -171,28 +186,53 @@ def plan(
             h.addConstr(ft[g] == rules.transfers.free_per_gw)
         else:
             p = gws[t - 1]
-            kept = ft[p] if events.get("unlimited_transfers_gw") == p else ft[p] - n[p] + hits[p]
+            kept = (
+                ft[p] if events.get("unlimited_transfers_gw") == p else ft[p] - moves[p] + hits[p]
+            )
             h.addConstr(ft[g] <= kept + rules.transfers.free_per_gw)
         if events.get("unlimited_transfers_gw") == g:
             h.addConstr(hits[g] == 0)
         else:
-            h.addConstr(hits[g] >= n[g] - ft[g])
+            h.addConstr(hits[g] >= moves[g] - ft[g])
 
-    h.maximize(objective)
-    status = h.getModelStatus()
-    if status not in (highspy.HighsModelStatus.kOptimal, highspy.HighsModelStatus.kTimeLimit):
-        raise RuntimeError(f"planner MILP failed: {h.modelStatusToString(status)}")
     g0 = gws[0]
-    chosen = tuple(sorted(i for i in players if h.val(x[i, g0]) > 0.5))
-    ins = sorted(i for i in chosen if i not in owned)
-    outs = sorted(i for i in owned if i not in chosen)
-    first_hits = 0 if squad is None else round(h.val(hits[g0]))
-    return Plan(
-        squad=chosen,
-        transfers=tuple(Transfer(o, i) for o, i in zip(outs, ins, strict=True)) if squad else (),
-        hits=first_hits,
-        objective=h.getInfo().objective_function_value,
-    )
+    found: list[Plan] = []
+    while len(found) < n:
+        h.maximize(objective)
+        status = h.getModelStatus()
+        if status == highspy.HighsModelStatus.kInfeasible and found:
+            break  # fewer distinct squads than asked for
+        if status not in (
+            highspy.HighsModelStatus.kOptimal,
+            highspy.HighsModelStatus.kTimeLimit,
+        ):
+            raise RuntimeError(f"planner MILP failed: {h.modelStatusToString(status)}")
+        chosen = tuple(sorted(i for i in players if h.val(x[i, g0]) > 0.5))
+        hit = 0 if squad is None else round(h.val(hits[g0])) * rules.transfers.hit_cost
+        first = sum(
+            xp[g0].get(i, 0.0)
+            * (
+                h.val(s[i, g0])
+                + h.val(c[i, g0])
+                + BENCH_WEIGHT * (h.val(x[i, g0]) - h.val(s[i, g0]))
+            )
+            for i in players
+        )
+        ins = sorted(i for i in chosen if i not in owned)
+        outs = sorted(i for i in owned if i not in chosen)
+        found.append(
+            Plan(
+                squad=chosen,
+                transfers=tuple(Transfer(o, i) for o, i in zip(outs, ins, strict=True))
+                if squad
+                else (),
+                hits=hit,
+                objective=h.getInfo().objective_function_value,
+                first_gw=first - hit,
+            )
+        )
+        h.addConstr(sum(x[i, g0] for i in chosen) <= rules.squad.size - 1)  # no-good cut
+    return found
 
 
 @dataclass
