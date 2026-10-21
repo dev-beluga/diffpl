@@ -10,6 +10,13 @@ select
     cast(p.value ->> 'chance_of_playing_next_round' as int) as chance_next_round,
     nullif(p.value ->> 'news', '') as news,
     cast(p.value ->> 'selected_by_percent' as numeric) as selected_by_percent,
+    -- Owner count, the unit vaastav and element-summary history use.
+    round(
+        cast(p.value ->> 'selected_by_percent' as numeric)
+        * cast(r.payload ->> 'total_players' as numeric) / 100
+    )::bigint as selected_by,
+    cast(p.value ->> 'transfers_in_event' as int) as transfers_in_event,
+    cast(p.value ->> 'transfers_out_event' as int) as transfers_out_event,
     r.fetched_at as as_of,
     r.id as response_id
 from {{ source('raw', 'fpl_api_responses') }} as r

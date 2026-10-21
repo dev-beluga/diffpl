@@ -139,3 +139,94 @@ def load_season(engine: Engine, season: str) -> SeasonData:
     if deadlines.is_empty():
         raise LookupError(f"season {season} is not loaded")
     return SeasonData(season, deadlines, player_matches, prices, fixtures, players, teams)
+
+
+POSITION_BY_TYPE = (
+    "case element_type when 1 then 'GKP' when 2 then 'DEF' when 3 then 'MID' else 'FWD' end"
+)
+# Latest bootstrap snapshot: current team, position and price of every player.
+_LATEST = """
+    with snap as (select max(as_of) as as_of from staging.stg_fpl__elements),
+    el as (select e.* from staging.stg_fpl__elements e join snap on e.as_of = snap.as_of),
+    tm as (select t.* from staging.stg_fpl__teams t join snap on t.as_of = snap.as_of)
+"""
+
+
+def load_live(engine: Engine, season: str) -> SeasonData:
+    """Read the live season from the FPL API staging models, in `load_season`'s shape.
+
+    Match rows come from element-summary history. Prices at past deadlines come from those
+    rows; the price for the next deadline comes from the latest bootstrap snapshot, known as
+    of when it was fetched. Teams are each player's current club.
+    """
+    deadlines = _read(
+        engine,
+        "select gw, deadline_time from marts.mart_gameweek_deadlines where season = :s",
+        season,
+    )
+    player_matches = _read(
+        engine,
+        _LATEST
+        + """
+        select g.element_id, tm.team_name, g.fixture_id, g.gw, g.kickoff_time, g.was_home,
+               g.opponent_team_id, g.minutes, g.total_points, g.goals_scored, g.assists,
+               g.clean_sheets, g.goals_conceded, g.saves, g.penalties_saved,
+               g.penalties_missed, g.yellow_cards, g.red_cards, g.own_goals, g.bonus, g.bps,
+               g.influence, g.creativity, g.threat, g.ict_index, g.expected_goals,
+               g.expected_assists, g.starts, g.as_of
+        from staging.stg_fpl__player_gameweeks g
+        join el on el.element_id = g.element_id
+        join tm on tm.team_id = el.team_id
+        """,
+        season,
+    )
+    prices = _read(
+        engine,
+        _LATEST
+        + """
+        , past as (
+            select distinct on (g.gw, g.element_id) g.gw, g.element_id, tm.team_name,
+                   g.price_tenths, g.selected_by, g.transfers_in, g.transfers_out,
+                   d.deadline_time - interval '1 minute' as as_of
+            from staging.stg_fpl__player_gameweeks g
+            join el on el.element_id = g.element_id
+            join tm on tm.team_id = el.team_id
+            join marts.mart_gameweek_deadlines d on d.season = :s and d.gw = g.gw
+            order by g.gw, g.element_id, g.kickoff_time
+        ),
+        next_gw as (
+            select min(d.gw) as gw from marts.mart_gameweek_deadlines d, snap
+            where d.season = :s and d.deadline_time > snap.as_of
+        )
+        select * from past
+        union all
+        select n.gw, el.element_id, tm.team_name, el.price_tenths, el.selected_by,
+               el.transfers_in_event, el.transfers_out_event, el.as_of
+        from el join tm on tm.team_id = el.team_id cross join next_gw n
+        where n.gw is not null
+        """,
+        season,
+    )
+    fixtures = _read(
+        engine,
+        """
+        with snap as (select max(as_of) as as_of from staging.stg_fpl__fixtures)
+        select f.fixture_id, f.gw, f.kickoff_time, f.home_team_id, f.away_team_id,
+               f.home_score, f.away_score, f.finished,
+               -- same settle interval as dbt's match_settle_interval
+               case when f.finished then f.kickoff_time + interval '3 hours' end as result_as_of
+        from staging.stg_fpl__fixtures f join snap on f.as_of = snap.as_of
+        where f.gw is not null
+        """,
+        season,
+    )
+    players = _read(
+        engine,
+        _LATEST + f"select element_id, web_name as player_name, {POSITION_BY_TYPE} as position "
+        "from el",
+        season,
+    )
+    teams = _read(engine, _LATEST + "select team_id, team_name from tm", season)
+    if deadlines.is_empty() or players.is_empty():
+        raise LookupError(f"live season {season} is not loaded; run `diffpl.ingest fpl`")
+    return SeasonData(season, deadlines, player_matches, prices, fixtures, players, teams)

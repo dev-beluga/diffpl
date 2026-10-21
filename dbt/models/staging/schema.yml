@@ -44,6 +44,14 @@ models:
         tests: [not_null]
       - name: as_of
         tests: [not_null]
+  - name: stg_fpl__player_gameweeks
+    columns:
+      - name: element_id
+        tests: [not_null]
+      - name: gw
+        tests: [not_null]
+      - name: as_of
+        tests: [not_null]
   - name: stg_fpl__teams
     columns:
       - name: team_id
