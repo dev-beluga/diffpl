@@ -2,6 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ComparePanel } from "@/components/ComparePanel";
 import { PlayerSheet } from "@/components/PlayerSheet";
 import { Failed, Spinner } from "@/components/States";
 import type { ExposureRow, LeagueView, Target } from "@/lib/api";
@@ -14,6 +15,7 @@ export default function LeaguePage() {
   const teamId = team && /^\d+$/.test(team) ? Number(team) : null;
   const res = useApi<LeagueView>(`/api/league/${id}${teamId ? `?team=${teamId}` : ""}`);
   const [player, setPlayer] = useState<number | null>(null);
+  const [picked, setRival] = useState<number | null>(null);
 
   useEffect(() => {
     if (res.status === "ok") remember(LAST_LEAGUE_KEY, res.data.league_id);
@@ -23,6 +25,10 @@ export default function LeaguePage() {
   if (res.status === "error") return <Failed message={res.message} />;
   const v = res.data;
   const me = v.standings.find((s) => s.entry_id === teamId);
+  const leader = v.standings[0]?.entry_id ?? null;
+  const base = teamId ?? leader;
+  const defaultRival = base === leader ? (v.standings[1]?.entry_id ?? null) : leader;
+  const rival = picked ?? defaultRival;
 
   return (
     <div className="flex flex-col gap-5">
@@ -42,50 +48,67 @@ export default function LeaguePage() {
         )}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <Panel title="Standings">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <Panel title="Leaderboard" note="Pick a manager to compare.">
           <table className="w-full text-sm">
             <thead className="text-xs uppercase tracking-wider text-muted">
               <tr>
                 <th className="py-1.5 text-left">#</th>
                 <th className="py-1.5 text-left">Team</th>
-                <th className="py-1.5 text-right">Pts</th>
-                <th className="py-1.5 text-right">Gap</th>
+                <th className="py-1.5 text-right">GW{v.gw}</th>
+                <th className="py-1.5 text-right">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {v.standings.map((s) => (
-                <tr key={s.entry_id} className={s.entry_id === teamId ? "bg-gold-soft/60 font-semibold" : ""}>
-                  <td className="py-1.5 tabular-nums">{s.rank}</td>
-                  <td className="py-1.5">
-                    {s.entry_name}
-                    <span className="ml-1.5 text-xs text-muted">{s.manager}</span>
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums">{s.total_points}</td>
-                  <td className="py-1.5 text-right tabular-nums text-muted">{s.gap ? `-${s.gap}` : "-"}</td>
-                </tr>
-              ))}
+              {v.standings.map((s) => {
+                const isMe = s.entry_id === teamId;
+                const isRival = s.entry_id === rival;
+                return (
+                  <tr
+                    key={s.entry_id}
+                    onClick={() => !isMe && setRival(s.entry_id)}
+                    className={`transition ${isMe ? "bg-gold-soft/60 font-semibold" : "cursor-pointer hover:bg-sand"} ${
+                      isRival ? "bg-espresso text-cream hover:bg-espresso" : ""
+                    }`}
+                  >
+                    <td className="py-2 pl-1 tabular-nums">{s.rank}</td>
+                    <td className="max-w-0 py-2">
+                      <div className="truncate font-semibold">{s.entry_name}</div>
+                      <div className={`truncate text-xs ${isRival ? "text-sand-deep" : "text-muted"}`}>{s.manager}</div>
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{s.gw_points}</td>
+                    <td className="py-2 pr-1 text-right font-semibold tabular-nums">{s.total_points}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </Panel>
 
-        <div className="flex flex-col gap-5">
-          {teamId ? (
-            <>
-              <Panel title="Your differentials" note="You own them; the league mostly does not. You gain when they score.">
-                <ExposureList rows={v.differentials} onSelect={setPlayer} />
-              </Panel>
-              <Panel title="Threats" note="The league owns or captains them; you do not. You lose ground when they score.">
-                <ExposureList rows={v.threats} onSelect={setPlayer} />
-              </Panel>
-            </>
+        <Panel title="Compare">
+          {base && rival ? (
+            <ComparePanel leagueId={v.league_id} a={base} b={rival} onSelectPlayer={setPlayer} />
           ) : (
-            <Panel title="Your exposure">
-              <p className="text-sm text-ink-soft">Add your team id to the URL (?team=…) to see differentials and threats.</p>
-            </Panel>
+            <p className="text-sm text-ink-soft">Pick a manager on the left.</p>
           )}
-        </div>
+          {!teamId && (
+            <p className="mt-3 text-xs text-muted">
+              Comparing against the leader. Add your team id (?team=…) to compare against yourself.
+            </p>
+          )}
+        </Panel>
       </div>
+
+      {teamId && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Panel title="Your differentials" note="You own them; the league mostly does not. You gain when they score.">
+            <ExposureList rows={v.differentials} onSelect={setPlayer} />
+          </Panel>
+          <Panel title="Threats" note="The league owns or captains them; you do not. You lose ground when they score.">
+            <ExposureList rows={v.threats} onSelect={setPlayer} />
+          </Panel>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel

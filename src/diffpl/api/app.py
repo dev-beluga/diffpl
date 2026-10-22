@@ -20,7 +20,7 @@ from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine, create_engine, text
 
-from diffpl.api.league import LeagueView, league_view
+from diffpl.api.league import Compare, LeagueView, compare, league_view
 from diffpl.api.plan import GwPlan, build_plan
 from diffpl.api.stats import (
     PlayerDetail,
@@ -265,3 +265,20 @@ def league(
         reference, name = data, "this league (top 100 not ingested)"
     lv = live()
     return league_view(data, team, reference, name, lv.players(), lv.xp_horizon())
+
+
+@app.get("/api/league/{league_id}/compare", response_model=Compare)
+def league_compare(
+    league_id: int = Path(gt=0, lt=100_000_000),
+    a: int = Query(gt=0, lt=100_000_000),
+    b: int = Query(gt=0, lt=100_000_000),
+) -> Compare:
+    """Two managers of one league side by side at the last GW."""
+    from diffpl.leagues.report import load_league
+
+    try:
+        data = load_league(engine(), league_id)
+        lv = live()
+        return compare(data, a, b, lv.players(), lv.xp_horizon())
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -79,3 +79,32 @@ def test_without_a_team_there_is_no_exposure() -> None:
     mini = league({1: [1], 2: [2]}, captain={})
     v = league_view(mini, None, mini, "this league", {1: player(1), 2: player(2)}, {1: 1.0, 2: 2.0})
     assert v.differentials == [] and v.threats == [] and len(v.standings) == 2
+
+
+def test_compare_splits_squads_and_flags_captain_and_bench() -> None:
+    from diffpl.api.league import compare
+
+    mini = league({1: [1, 2, 3], 2: [1, 4]}, captain={1: 2, 2: 1})
+    mini = LeagueData(
+        mini.league_id,
+        mini.managers,
+        mini.ownership,
+        pl.DataFrame(
+            {
+                "entry_id": [1, 2],
+                "gw": [GW, GW],
+                "points": [60, 50],
+                "hit_cost": [4, 0],
+                "chip": [None, "bboost"],
+                "value_tenths": [1000, 1010],
+                "bank_tenths": [5, 0],
+            }
+        ),
+        mini.picks.with_columns(pl.lit(1).alias("slot")),
+        mini.names,
+    )
+    c = compare(mini, 1, 2, {i: player(i) for i in range(1, 5)}, {i: float(i) for i in range(1, 5)})
+    assert [p.element_id for p in c.shared] == [1]
+    assert c.shared[0].mult_a == 1 and c.shared[0].mult_b == 2  # entry 2 captains player 1
+    assert {p.element_id for p in c.only_a} == {2, 3} and [p.element_id for p in c.only_b] == [4]
+    assert c.a.gw_points == 60 and c.a.hits == 4 and c.b.chip == "bboost" and c.b.value == 101.0

@@ -126,6 +126,7 @@ export interface Standing {
   manager: string;
   total_points: number;
   gap: number;
+  gw_points: number;
 }
 
 export interface ExposureRow {
@@ -160,4 +161,38 @@ export interface LeagueView {
   template_targets: Target[];
   differential_targets: Target[];
   reference: string;
+}
+
+export interface ManagerSummary {
+  entry_id: number;
+  entry_name: string;
+  manager: string;
+  rank: number;
+  total_points: number;
+  gw_points: number;
+  hits: number;
+  chip: string | null;
+  value: number;
+  bank: number;
+}
+
+export interface ComparePlayer {
+  element_id: number;
+  name: string;
+  team: string;
+  position: string;
+  xp: number;
+  mult_a: number;
+  mult_b: number;
+  bench_a: boolean;
+  bench_b: boolean;
+}
+
+export interface Compare {
+  gw: number;
+  a: ManagerSummary;
+  b: ManagerSummary;
+  shared: ComparePlayer[];
+  only_a: ComparePlayer[];
+  only_b: ComparePlayer[];
 }
