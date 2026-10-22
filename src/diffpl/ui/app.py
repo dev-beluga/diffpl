@@ -318,7 +318,7 @@ def live_models() -> tuple[object, object]:
 
 
 @st.cache_data(ttl=600, show_spinner="Planning this GW: MILP plans and simulated draws")
-def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, pl.DataFrame]:
+def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, int, pl.DataFrame]:
     """Next deadline's plans for a team, EV order, with P(beat rival)."""
     from datetime import UTC, datetime
 
@@ -327,7 +327,7 @@ def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, p
     from diffpl.models.two_part import TwoPartModel
     from diffpl.optim.live import recommend
     from diffpl.optim.planner import HORIZON, fixture_horizon
-    from diffpl.optim.rival import N_PLANS, Draws
+    from diffpl.optim.rival import N_PLANS, Draws, choose
     from diffpl.replay.data import Observation, load_live
     from diffpl.sim.simulate import simulate
 
@@ -362,7 +362,7 @@ def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, p
     rows = [
         {
             "plan": k + 1,
-            "P(beat rival)": o.p_beat,
+            "P(beat rival this GW)": o.p_beat,
             "EV (horizon)": round(o.plan.objective, 1),
             "hits": o.plan.hits,
             "transfers": ", ".join(
@@ -375,7 +375,10 @@ def this_gw(league_id: int, entry_id: int, rival_id: int | None) -> tuple[int, p
         }
         for k, o in enumerate(options)
     ]
-    return obs.gw, pl.DataFrame(rows)
+    best = choose(
+        [o.plan for o in options], tuple(o.p_beat for o in options if o.p_beat is not None)
+    )
+    return obs.gw, best, pl.DataFrame(rows)
 
 
 def this_gw_section() -> None:
@@ -401,16 +404,18 @@ def this_gw_section() -> None:
     if not entry_id or not st.button("Plan this GW"):
         return
     try:
-        gw, plans = this_gw(league_id, entry_id, rival)
+        gw, best, plans = this_gw(league_id, entry_id, rival)
     except LookupError as exc:
         st.warning(str(exc))
         return
-    best = 0
-    if rival is not None:
-        best = int(plans["P(beat rival)"].arg_max() or 0)
-    st.markdown(f"**GW{gw}: play plan {best + 1}.** Plan 1 is the best by expected points.")
+    st.markdown(
+        f"**GW{gw}: play plan {best + 1}.** Plan 1 is the best by expected points; others are "
+        "eligible only within 2 points of it."
+    )
     st.dataframe(
-        plans.with_columns(pl.col(pl.Float64).round(3)) if rival else plans.drop("P(beat rival)"),
+        plans.with_columns(pl.col(pl.Float64).round(3))
+        if rival
+        else plans.drop("P(beat rival this GW)"),
         hide_index=True,
     )
 
@@ -429,7 +434,7 @@ def planner_tab() -> None:
     st.caption(
         "Rival: the greedy champion manager. h2h: share of GWs won, ties count half. "
         "planner maximizes expected points (ADR-0010); rank_aware picks among the top 10 "
-        "plans by P(beat rival) on simulated draws (ADR-0011)."
+        "plans within 2 EV points by P(beat rival this GW) on simulated draws (ADR-0011)."
     )
     st.dataframe(summary.with_columns(pl.col("h2h").round(3)), hide_index=True)
 
@@ -448,7 +453,7 @@ def planner_tab() -> None:
     picks = sel.filter(pl.col("manager") == "rank_aware", pl.col("p_beat_chosen").is_not_null())
     moved = picks.filter(pl.col("chosen_plan") > 0)
     st.markdown(
-        f"**Deadlines where P(beat rival) overruled the EV-best plan: {moved.height} of "
+        f"**Deadlines where P(beat rival) chose a plan other than the EV-best: {moved.height} of "
         f"{picks.height}**"
     )
     st.dataframe(

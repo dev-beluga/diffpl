@@ -9,10 +9,12 @@ from test_replay_run import DEC
 from diffpl.leagues.rules import LeagueRules
 from diffpl.optim.planner import Plan, PlannerManager, Projector, fixture_horizon, plans
 from diffpl.optim.rival import (
+    EV_SLACK,
     INELIGIBLE,
     Draws,
     RivalManager,
     RivalView,
+    choose,
     gw_points,
     hit_adjustment,
     p_beat,
@@ -98,7 +100,11 @@ def test_rival_manager_plays_legal_season_and_records_choices() -> None:
     assert r.violations == []
     assert [c.gw for c in m.choices] == [2, 3]
     for c in m.choices:
-        assert len(c.p_beat) == len(c.objective) and c.p_beat[c.chosen] == max(c.p_beat)
+        eligible = [
+            p for p, o in zip(c.p_beat, c.objective, strict=True) if o >= c.objective[0] - EV_SLACK
+        ]
+        assert len(c.p_beat) == len(c.objective) and c.p_beat[c.chosen] == max(eligible)
+        assert c.objective[c.chosen] >= c.objective[0] - EV_SLACK
 
 
 @pytest.mark.parametrize("from_gw", [2, 3])
@@ -109,3 +115,11 @@ def test_poisoned_future_does_not_change_decisions(from_gw: int) -> None:
     run_season(data, RULES, clean)
     run_season(poison_future(data, from_gw), RULES, dirty)
     assert clean.log[:from_gw] == dirty.log[:from_gw]
+
+
+def test_choose_stays_within_the_ev_slack() -> None:
+    found = [Plan((), (), 0, obj, 0.0) for obj in (50.0, 49.0, 47.0)]
+    assert choose(found, (0.4, 0.5, 0.9)) == 1  # plan 3 has the best odds but costs 3 points
+    assert choose(found, (0.6, 0.5, 0.9)) == 0
+    assert choose(found, (0.5, 0.5, 0.1)) == 0  # ties go to the higher EV plan
+    assert choose(found, ()) == 0

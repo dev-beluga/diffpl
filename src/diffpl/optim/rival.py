@@ -1,17 +1,15 @@
-"""Rank-aware planner: choose among the top EV plans by P(beat a rival) (ADR-0011).
+"""Rank-aware planner: among near-best EV plans, play the one most likely to beat a rival
+this GW (ADR-0011, v2).
 
 The MILP (ADR-0010) proposes up to N_PLANS plans with distinct first-GW squads. Each is scored
-on joint simulator draws (ADR-0009) against one rival:
+on joint simulator draws (ADR-0009) against one rival: per draw, my GW points (XI plus
+captain) against the rival's, with hits adjusted by the league's own rules (ADR-0005).
+P(beat) is the share of draws I score more this GW (ties count half).
 
-- first GW: points per draw for my XI and captain, and for the rival's, with hits adjusted by
-  the league's own rules (ADR-0005);
-- later GWs: each side's weighted expected points, mine from the plan, the rival's from their
-  current squad held unchanged;
-- P(beat) is the share of draws where my horizon total is higher (ties count half).
-
-The plan with the highest P(beat) is played. With no rival known, the EV-best plan is played.
-Simplifications: only the first GW is random, the rival makes no transfers, no auto-subs in
-the draws.
+Only plans within EV_SLACK points of the EV-best plan's horizon objective are eligible, so the
+choice costs at most EV_SLACK expected points over the horizon. Among them the highest P(beat)
+is played. With no rival known, the EV-best plan is played.
+Simplifications: the rival keeps their last lineup and captain, no auto-subs in the draws.
 """
 
 from __future__ import annotations
@@ -22,7 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from diffpl.leagues.rules import EntryGw, LeagueRules, default_rules, score_gameweek
-from diffpl.optim.planner import BENCH_WEIGHT, DECAY, Plan, Projection, Projector, plans
+from diffpl.optim.planner import Plan, Projection, Projector, plans
 from diffpl.replay.baselines import best_lineup
 from diffpl.replay.data import Observation
 from diffpl.replay.engine import Market
@@ -30,6 +28,7 @@ from diffpl.replay.types import Decision, InitialSquad, ManagerView, SquadState
 from diffpl.rules import Position, Rules
 
 N_PLANS = 10
+EV_SLACK = 2.0  # expected horizon points the rival-aware choice may give up
 ME, RIVAL = 0, 1  # entry ids inside the league scoring call
 
 
@@ -68,18 +67,6 @@ def gw_points(draws: Draws, d: Decision) -> np.ndarray:
     return total
 
 
-def squad_value(
-    rules: Rules, squad: list[int], xp: Mapping[int, float], position: Mapping[int, Position]
-) -> float:
-    """Expected points of a squad's best XI, captain and bench, as the MILP values it."""
-    d = best_lineup(rules, squad, xp, position)
-    return (
-        sum(xp.get(i, 0.0) for i in d.lineup)
-        + xp.get(d.captain, 0.0)
-        + BENCH_WEIGHT * sum(xp.get(i, 0.0) for i in d.bench)
-    )
-
-
 INELIGIBLE = -10_000  # a side the league rules bar from the GW cannot come out ahead
 
 
@@ -100,28 +87,26 @@ def p_beat(
     plan: Plan,
     rival: RivalView,
 ) -> float:
+    """P(my GW score beats the rival's) under the league's hit rules; ties count half."""
     mine = best_lineup(rules, list(plan.squad), xp[gw], position)
-    later = [g for g in sorted(xp) if g > gw]
-    rival_squad = [*rival.decision.lineup, *rival.decision.bench]
-    rival_future = sum(
-        DECAY ** (t + 1) * squad_value(rules, rival_squad, xp[g], position)
-        for t, g in enumerate(later)
-    )
     my_adj, rival_adj = hit_adjustment(league, gw, plan.hits, 0)
-    margin = (
-        gw_points(draws, mine)
-        + my_adj
-        + (plan.objective - plan.first_gw)
-        - gw_points(draws, rival.decision)
-        - rival_adj
-        - rival_future
-    )
+    margin = gw_points(draws, mine) + my_adj - gw_points(draws, rival.decision) - rival_adj
     return float((margin > 0).mean() + 0.5 * (margin == 0).mean())
+
+
+def choose(found: list[Plan], probs: tuple[float, ...]) -> int:
+    """Index of the plan to play: highest P(beat) among plans within EV_SLACK of the best EV.
+    Ties go to the higher EV plan. No probabilities: the EV-best plan."""
+    if not probs:
+        return 0
+    floor = found[0].objective - EV_SLACK
+    eligible = [k for k, p in enumerate(found) if p.objective >= floor]
+    return max(eligible, key=lambda k: (probs[k], -k))
 
 
 @dataclass
 class RivalManager:
-    """Plays the plan with the best P(beat rival) among the top EV plans."""
+    """Plays the near-best EV plan most likely to beat the rival this GW."""
 
     name: str
     rules: Rules
@@ -149,7 +134,7 @@ class RivalManager:
         found, probs = rank_plans(
             self.rules, self.league, obs, market, view.squad, xp, self.simulate, rival, self.n_plans
         )
-        best = int(np.argmax(probs)) if probs else 0  # first maximum: ties go to higher EV
+        best = choose(found, probs)
         chosen = found[best]
         self.choices.append(
             Choice(
