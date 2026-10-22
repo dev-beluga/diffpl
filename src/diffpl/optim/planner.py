@@ -158,7 +158,9 @@ def plans(
             h.addConstr(sum(x[i, g] for i in at) == lim.select)
             h.addConstr(sum(s[i, g] for i in at) >= lim.min_play)
             h.addConstr(sum(s[i, g] for i in at) <= lim.max_play)
-        for club in {market.team[i] for i in players}:
+        # Sorted: set order follows string hashing, which changes per process, and constraint
+        # order steers which of several near-tied optima HiGHS returns.
+        for club in sorted({market.team[i] for i in players}):
             limit = max(rules.squad.max_per_team, clubs[club])  # FPL tolerates moved players
             h.addConstr(sum(x[i, g] for i in players if market.team[i] == club) <= limit)
 
