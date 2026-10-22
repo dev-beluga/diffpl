@@ -34,12 +34,11 @@ DECAY = 0.85  # weight of GW t+1 relative to GW t: later projections are less ce
 BENCH_WEIGHT = 0.1  # value of a bench player's points, a stand-in for auto-sub chances
 CANDIDATES_PER_POSITION = 25
 CHEAPEST_PER_POSITION = 3
-# Safety net only. A solve stopped by the clock returns whatever it found by then, which
-# depends on machine load, so replays stop being reproducible. Solves end on MIP_GAP; hitting
-# this limit is an error, not a result.
-TIME_LIMIT_S = 600.0
-# Deterministic cap on branch-and-bound nodes. Most solves finish at the root; the hardest
-# probed (2024-25 GW23) took 117 nodes and 25 s. At the cap the best plan found is kept.
+# Solves end on MIP_GAP or, deterministically, on a node cap; never on the clock. A wall-clock
+# limit returns whatever was found by then, which depends on machine load, and HiGHS counts it
+# across every re-solve of one model, so later plans got cut short. Most solves finish at the
+# root; the hardest probed (2024-25 GW23) took 117 nodes and 25 s. At the cap the best plan
+# found is kept.
 MAX_NODES = 500
 MIP_GAP = 1e-3
 
@@ -130,7 +129,6 @@ def plans(
 
     h = highspy.Highs()  # type: ignore[no-untyped-call]
     h.setOptionValue("output_flag", False)
-    h.setOptionValue("time_limit", TIME_LIMIT_S)
     h.setOptionValue("mip_rel_gap", MIP_GAP)
     h.setOptionValue("mip_max_nodes", MAX_NODES)
     h.setOptionValue("threads", 1)
