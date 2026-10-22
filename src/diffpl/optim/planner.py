@@ -10,6 +10,7 @@ projection, which picks the same XI and captain the MILP valued.
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -26,6 +27,8 @@ from diffpl.rules import Rules
 Projection = dict[int, dict[int, float]]  # gw -> element_id -> expected points
 Projector = Callable[[Observation], Projection]
 
+log = logging.getLogger(__name__)
+
 HORIZON = 4
 DECAY = 0.85  # weight of GW t+1 relative to GW t: later projections are less certain
 BENCH_WEIGHT = 0.1  # value of a bench player's points, a stand-in for auto-sub chances
@@ -35,6 +38,9 @@ CHEAPEST_PER_POSITION = 3
 # depends on machine load, so replays stop being reproducible. Solves end on MIP_GAP; hitting
 # this limit is an error, not a result.
 TIME_LIMIT_S = 600.0
+# Deterministic cap on branch-and-bound nodes. Most solves finish at the root; the hardest
+# probed (2024-25 GW23) took 117 nodes and 25 s. At the cap the best plan found is kept.
+MAX_NODES = 500
 MIP_GAP = 1e-3
 
 
@@ -126,6 +132,7 @@ def plans(
     h.setOptionValue("output_flag", False)
     h.setOptionValue("time_limit", TIME_LIMIT_S)
     h.setOptionValue("mip_rel_gap", MIP_GAP)
+    h.setOptionValue("mip_max_nodes", MAX_NODES)
     h.setOptionValue("threads", 1)
 
     x = {(i, g): h.addBinary() for i in players for g in gws}  # in squad
@@ -207,7 +214,10 @@ def plans(
         status = h.getModelStatus()
         if status == highspy.HighsModelStatus.kInfeasible and found:
             break  # fewer distinct squads than asked for
-        if status != highspy.HighsModelStatus.kOptimal:
+        if status == highspy.HighsModelStatus.kSolutionLimit and h.getInfo().primal_solution_status:
+            # Node cap reached with a feasible plan: deterministic, so keep it and say so.
+            log.warning("planner stopped at %d nodes, gap %.4f", MAX_NODES, h.getInfo().mip_gap)
+        elif status != highspy.HighsModelStatus.kOptimal:
             raise RuntimeError(f"planner MILP failed: {h.modelStatusToString(status)}")
         chosen = tuple(sorted(i for i in players if h.val(x[i, g0]) > 0.5))
         hit = 0 if squad is None else round(h.val(hits[g0])) * rules.transfers.hit_cost
