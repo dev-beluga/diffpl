@@ -72,6 +72,9 @@ class PlayerDetail(BaseModel):
     matches: list[MatchRow]
     points_bins: list[float]  # values of the next-GW points distribution
     points_probs: list[float]  # probabilities, same order; empty if no projection
+    p60: float | None = None  # champion's P(60+ minutes) next GW
+    xp_horizon: float = 0.0  # expected points over the planning horizon
+    horizon: int = 4
 
 
 def _latest_prices(data: SeasonData) -> pl.DataFrame:

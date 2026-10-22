@@ -16,10 +16,11 @@ from datetime import UTC, datetime
 from functools import cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine, create_engine, text
 
+from diffpl.api.league import LeagueView, league_view
 from diffpl.api.plan import GwPlan, build_plan
 from diffpl.api.stats import (
     PlayerDetail,
@@ -136,22 +137,51 @@ class _Live:
         self.short_by_id = {int(r[0]): str(r[2]) for r in teams}
         self.ownership = {int(r[0]): float(r[1] or 0) for r in owned}
         self._dist: dict[int, list[float]] | None = None
+        self._p60: dict[int, float] = {}
+        self._xp: dict[int, float] | None = None
+        self._players: dict[int, PlayerRow] | None = None
 
-    def distribution(self) -> tuple[list[float], dict[int, list[float]]]:
-        """Champion's next-GW points distribution per player (bin values, probabilities)."""
+    def _projections(self) -> None:
+        """Champion's next-GW points distribution and P(60+ minutes), computed once."""
         from diffpl.features.build import gw_features
+        from diffpl.models.two_part import TwoPartModel
+
+        model = champion_model()
+        assert isinstance(model, TwoPartModel)
+        feats = gw_features(self.data.observe(self.gw))
+        ids = [int(e) for e in feats["element_id"].to_list()]
+        probs = model.predict_dist(feats)
+        p60 = model.predict_minutes(feats)[:, 2]
+        self._dist = {
+            e: [round(float(p), 4) for p in row] for e, row in zip(ids, probs, strict=True)
+        }
+        self._p60 = {e: round(float(p), 3) for e, p in zip(ids, p60, strict=True)}
+
+    def distribution(self) -> tuple[list[float], dict[int, list[float]], dict[int, float]]:
+        """(bin values, per-player bin probabilities, per-player P(60+ minutes))."""
         from diffpl.models.two_part import TwoPartModel
 
         model = champion_model()
         assert isinstance(model, TwoPartModel) and model.bin_values is not None
         if self._dist is None:
-            feats = gw_features(self.data.observe(self.gw))
-            probs = model.predict_dist(feats)
-            self._dist = {
-                int(e): [round(float(p), 4) for p in row]
-                for e, row in zip(feats["element_id"].to_list(), probs, strict=True)
-            }
-        return [float(v) for v in model.bin_values], self._dist
+            self._projections()
+        return [float(v) for v in model.bin_values], self._dist or {}, self._p60
+
+    def xp_horizon(self) -> dict[int, float]:
+        """Champion's expected points summed over the planning horizon, per player."""
+        if self._xp is None:
+            xp: dict[int, float] = {}
+            for per_gw in champion_projector()(self.data.observe(self.gw)).values():
+                for i, v in per_gw.items():
+                    xp[i] = xp.get(i, 0.0) + v
+            self._xp = xp
+        return self._xp
+
+    def players(self) -> dict[int, PlayerRow]:
+        if self._players is None:
+            rows = player_table(self.data, self.short, self.ownership)
+            self._players = {r.element_id: r for r in rows}
+        return self._players
 
 
 _live: tuple[float, _Live] | None = None
@@ -180,25 +210,24 @@ def champion_model() -> object:
 
 @app.get("/api/stats/players", response_model=list[PlayerRow])
 def stats_players() -> list[PlayerRow]:
-    lv = live()
-    return player_table(lv.data, lv.short, lv.ownership)
+    return list(live().players().values())
 
 
 @app.get("/api/stats/players/{element_id}", response_model=PlayerDetail)
 def stats_player(element_id: int = Path(gt=0, lt=10_000)) -> PlayerDetail:
     lv = live()
-    row = next(
-        (r for r in player_table(lv.data, lv.short, lv.ownership) if r.element_id == element_id),
-        None,
-    )
+    row = lv.players().get(element_id)
     if row is None:
         raise HTTPException(status_code=404, detail=f"no matches for player {element_id}")
-    bins, dist = lv.distribution()
+    bins, dist, p60 = lv.distribution()
     return PlayerDetail(
         row=row,
         matches=player_matches(lv.data, element_id, lv.short_by_id),
         points_bins=bins if element_id in dist else [],
         points_probs=dist.get(element_id, []),
+        p60=p60.get(element_id),
+        xp_horizon=round(lv.xp_horizon().get(element_id, 0.0), 1),
+        horizon=HORIZON,
     )
 
 
@@ -212,3 +241,27 @@ def stats_teams() -> list[TeamForm]:
 def stats_fixtures() -> list[TickerRow]:
     lv = live()
     return fixture_ticker(lv.data, lv.gw, TICKER_GWS, lv.short)
+
+
+# --- Mini-leagues ----------------------------------------------------------------------------
+
+TOP_LEAGUE_ID = 314  # overall league; its first 100 members are the template reference
+
+
+@app.get("/api/league/{league_id}", response_model=LeagueView)
+def league(
+    league_id: int = Path(gt=0, lt=100_000_000),
+    team: int | None = Query(default=None, gt=0, lt=100_000_000),
+) -> LeagueView:
+    from diffpl.leagues.report import load_league
+
+    try:
+        data = load_league(engine(), league_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        reference, name = load_league(engine(), TOP_LEAGUE_ID), "overall top 100"
+    except LookupError:
+        reference, name = data, "this league (top 100 not ingested)"
+    lv = live()
+    return league_view(data, team, reference, name, lv.players(), lv.xp_horizon())
