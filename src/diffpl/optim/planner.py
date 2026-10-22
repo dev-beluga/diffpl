@@ -31,7 +31,10 @@ DECAY = 0.85  # weight of GW t+1 relative to GW t: later projections are less ce
 BENCH_WEIGHT = 0.1  # value of a bench player's points, a stand-in for auto-sub chances
 CANDIDATES_PER_POSITION = 25
 CHEAPEST_PER_POSITION = 3
-TIME_LIMIT_S = 20.0
+# Safety net only. A solve stopped by the clock returns whatever it found by then, which
+# depends on machine load, so replays stop being reproducible. Solves end on MIP_GAP; hitting
+# this limit is an error, not a result.
+TIME_LIMIT_S = 600.0
 MIP_GAP = 1e-3
 
 
@@ -202,10 +205,7 @@ def plans(
         status = h.getModelStatus()
         if status == highspy.HighsModelStatus.kInfeasible and found:
             break  # fewer distinct squads than asked for
-        if status not in (
-            highspy.HighsModelStatus.kOptimal,
-            highspy.HighsModelStatus.kTimeLimit,
-        ):
+        if status != highspy.HighsModelStatus.kOptimal:
             raise RuntimeError(f"planner MILP failed: {h.modelStatusToString(status)}")
         chosen = tuple(sorted(i for i in players if h.val(x[i, g0]) > 0.5))
         hit = 0 if squad is None else round(h.val(hits[g0])) * rules.transfers.hit_cost
