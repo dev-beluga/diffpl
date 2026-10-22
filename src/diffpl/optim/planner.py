@@ -21,7 +21,7 @@ from diffpl.replay.baselines import best_lineup
 from diffpl.replay.data import Observation
 from diffpl.replay.engine import Market, selling_price
 from diffpl.replay.types import Decision, InitialSquad, ManagerView, SquadState, Transfer
-from diffpl.rules import Rules
+from diffpl.rules import POSITIONS, Rules
 
 Projection = dict[int, dict[int, float]]  # gw -> element_id -> expected points
 Projector = Callable[[Observation], Projection]
@@ -218,8 +218,13 @@ def plans(
             )
             for i in players
         )
-        ins = sorted(i for i in chosen if i not in owned)
-        outs = sorted(i for i in owned if i not in chosen)
+
+        # Pair each sale with a purchase in the same position, so a transfer reads as a swap.
+        def by_position(i: int) -> tuple[int, int]:
+            return (POSITIONS.index(market.position[i]), i)
+
+        ins = sorted((i for i in chosen if i not in owned), key=by_position)
+        outs = sorted((i for i in owned if i not in chosen), key=by_position)
         found.append(
             Plan(
                 squad=chosen,

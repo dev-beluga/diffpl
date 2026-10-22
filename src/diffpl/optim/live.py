@@ -107,6 +107,14 @@ def load_entry(engine: Engine, entry_id: int, rules: Rules, market: Market, next
     return Entry(entry_id, squad, Decision(tuple(slots[:11]), tuple(slots[11:]), captain, vice))
 
 
+@dataclass(frozen=True)
+class Recommendation:
+    entry: Entry
+    xp: dict[int, float]  # expected points this GW per player
+    xp_horizon: dict[int, float]  # summed over the planning horizon, undiscounted
+    options: list[Option]  # best EV first
+
+
 def recommend(
     engine: Engine,
     rules: Rules,
@@ -114,12 +122,17 @@ def recommend(
     entry_id: int,
     project: Projector,
     n_plans: int,
-) -> list[Option]:
+) -> Recommendation:
     """Up to `n_plans` plans with distinct squads for the deadline in `obs`, best EV first."""
     market = Market.at(obs.prices, obs.players)
     me = load_entry(engine, entry_id, rules, market, obs.gw)
     xp = project(obs)
     found = plans(rules, market, me.squad, xp, rules.special_events, n=n_plans)
-    return [
+    options = [
         Option(p, best_lineup(rules, list(p.squad), xp[obs.gw], market.position)) for p in found
     ]
+    horizon: dict[int, float] = {}
+    for per_gw in xp.values():
+        for i, v in per_gw.items():
+            horizon[i] = horizon.get(i, 0.0) + v
+    return Recommendation(me, dict(xp[obs.gw]), horizon, options)
