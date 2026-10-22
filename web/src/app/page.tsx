@@ -22,7 +22,7 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-xl py-16 text-center">
       <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Plan your gameweek</h1>
-      <p className="mt-3 text-slate-600">
+      <p className="mt-3 text-ink-soft">
         Transfers, captain and lineup from calibrated projections and an optimizer, checked against past seasons.
       </p>
       <form
@@ -37,24 +37,24 @@ export default function Home() {
           placeholder="Your FPL team id"
           value={team}
           onChange={(e) => setTeam(e.target.value.trim())}
-          className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg shadow-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+          className="flex-1 rounded-xl border border-line bg-cream px-4 py-3 text-lg shadow-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold-soft"
           aria-label="FPL team id"
         />
         <button
           type="submit"
           disabled={!valid}
-          className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40"
+          className="rounded-xl bg-gold-deep px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-espresso disabled:opacity-40"
         >
           Plan
         </button>
       </form>
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-3 text-xs text-muted">
         It is the number in your FPL points page URL: fantasy.premierleague.com/entry/<b>1234567</b>/event/7
       </p>
       {last && (
         <button
           onClick={() => router.push(`/team/${last}`)}
-          className="mt-6 text-sm font-medium text-emerald-700 underline-offset-4 hover:underline"
+          className="mt-6 text-sm font-medium text-gold-deep underline-offset-4 hover:underline"
         >
           Continue with team {last}
         </button>

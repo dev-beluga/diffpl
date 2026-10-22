@@ -103,6 +103,9 @@ export interface PlayerDetail {
   matches: MatchRow[];
   points_bins: number[];
   points_probs: number[];
+  p60: number | null;
+  xp_horizon: number;
+  horizon: number;
 }
 
 export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -112,4 +115,49 @@ export async function getJson<T>(path: string, signal?: AbortSignal): Promise<T>
     throw new Error(body?.detail ?? `Request failed (${res.status})`);
   }
   return res.json();
+}
+
+// --- Mini-leagues (diffpl.api.league) --------------------------------------------------------
+
+export interface Standing {
+  rank: number;
+  entry_id: number;
+  entry_name: string;
+  manager: string;
+  total_points: number;
+  gap: number;
+}
+
+export interface ExposureRow {
+  element_id: number;
+  name: string;
+  team: string;
+  position: string;
+  mine: number;
+  ownership: number;
+  effective_ownership: number;
+  exposure: number;
+}
+
+export interface Target {
+  element_id: number;
+  name: string;
+  team: string;
+  position: string;
+  price: number;
+  xp_horizon: number;
+  reference_ownership: number;
+  league_ownership: number;
+}
+
+export interface LeagueView {
+  league_id: number;
+  gw: number;
+  managers: number;
+  standings: Standing[];
+  differentials: ExposureRow[];
+  threats: ExposureRow[];
+  template_targets: Target[];
+  differential_targets: Target[];
+  reference: string;
 }

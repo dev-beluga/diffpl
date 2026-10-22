@@ -82,14 +82,14 @@ export function TeamScatter({ teams }: { teams: TeamForm[] }) {
       </svg>
       {t && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-[130%] rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-lg"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-[130%] rounded-lg bg-espresso px-2.5 py-1.5 text-xs text-white shadow-lg"
           style={{ left: `${(x(t.xg_for) / W) * 100}%`, top: `${(y(t.xg_against) / H) * 100}%` }}
         >
           <div className="font-semibold">{t.team}, last {t.matches}</div>
-          <div className="tabular-nums text-slate-300">
+          <div className="tabular-nums text-gold-soft">
             xG {t.xg_for.toFixed(2)} for, {t.xg_against.toFixed(2)} against
           </div>
-          <div className="tabular-nums text-slate-300">
+          <div className="tabular-nums text-gold-soft">
             Goals {t.goals_for.toFixed(1)} for, {t.goals_against.toFixed(1)} against
           </div>
         </div>

@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+/* Warm theme: espresso and gold on sand. Data colours stay in the chart components. */
+@theme {
+  --color-espresso: #3b2a20;
+  --color-cocoa: #5c4434;
+  --color-gold: #d4a24c;
+  --color-gold-deep: #9c6f1f;
+  --color-gold-soft: #f3e3c3;
+  --color-sand: #f4ecdf;
+  --color-sand-deep: #e9dcc6;
+  --color-cream: #fffaf3;
+  --color-line: #e3d4bb;
+  --color-ink: #2a1d16;
+  --color-ink-soft: #5e4a3c;
+  --color-muted: #8a7462;
+  --color-pitch: #2f7d4a;
+  --color-pitch-alt: #2a7143;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-sand);
+  color: var(--color-ink);
 }

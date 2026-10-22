@@ -28,12 +28,12 @@ export function FixtureTicker({ rows }: { rows: TickerRow[] }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-xl bg-slate-100 p-1 text-sm">
+        <div className="inline-flex rounded-xl bg-sand-deep p-1 text-sm">
           {(["attack", "defence"] as Mode[]).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`rounded-lg px-3 py-1.5 font-medium capitalize ${mode === m ? "bg-white shadow-sm" : "text-slate-600"}`}
+              className={`rounded-lg px-3 py-1.5 font-medium capitalize ${mode === m ? "bg-cream shadow-sm" : "text-ink-soft"}`}
             >
               {m === "attack" ? "For attackers" : "For defenders"}
             </button>
@@ -41,10 +41,10 @@ export function FixtureTicker({ rows }: { rows: TickerRow[] }) {
         </div>
         <Legend mode={mode} />
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="overflow-x-auto rounded-2xl bg-cream shadow-sm ring-1 ring-line">
         <table className="w-full border-separate border-spacing-[2px] text-sm">
           <thead>
-            <tr className="text-xs uppercase tracking-wider text-slate-500">
+            <tr className="text-xs uppercase tracking-wider text-muted">
               <th className="px-3 py-2 text-left">Team</th>
               {gws.map((g) => (
                 <th key={g} className="px-2 py-2">
@@ -61,7 +61,7 @@ export function FixtureTicker({ rows }: { rows: TickerRow[] }) {
                   const fs = r.fixtures.filter((f) => f.gw === g);
                   if (!fs.length)
                     return (
-                      <td key={g} className="rounded-md bg-slate-50 px-2 py-1.5 text-center text-xs text-slate-400">
+                      <td key={g} className="rounded-md bg-sand px-2 py-1.5 text-center text-xs text-muted">
                         Blank
                       </td>
                     );
@@ -77,7 +77,7 @@ export function FixtureTicker({ rows }: { rows: TickerRow[] }) {
                             <div
                               key={i}
                               title={`${r.team} ${f.home ? "vs" : "at"} ${f.opponent}: ${f.xg_for.toFixed(2)} xG for, ${f.xg_against.toFixed(2)} against`}
-                              className={`min-w-[64px] flex-1 rounded-md px-2 py-1.5 text-center ${dark ? "text-white" : "text-slate-900"}`}
+                              className={`min-w-[64px] flex-1 rounded-md px-2 py-1.5 text-center ${dark ? "text-white" : "text-ink"}`}
                               style={{ background: bg }}
                             >
                               <div className="font-semibold">
@@ -104,7 +104,7 @@ export function FixtureTicker({ rows }: { rows: TickerRow[] }) {
 
 function Legend({ mode }: { mode: Mode }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-600">
+    <div className="flex items-center gap-2 text-xs text-ink-soft">
       <span>{mode === "attack" ? "Fewer expected goals" : "More goals expected against"}</span>
       {[...BAD].reverse().map((c) => (
         <span key={c} className="h-3 w-5 rounded-sm" style={{ background: c }} />

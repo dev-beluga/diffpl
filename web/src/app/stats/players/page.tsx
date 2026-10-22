@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { METRICS, type Metric, PositionPlots } from "@/components/charts/PositionPlots";
 import { Failed, Spinner } from "@/components/States";
 import type { PlayerRow, Position } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
@@ -27,6 +28,7 @@ export default function PlayersPage() {
   const [query, setQuery] = useState("");
   const [minMins, setMinMins] = useState(270);
   const [sort, setSort] = useState<{ key: Key; desc: boolean }>({ key: "points", desc: true });
+  const [metric, setMetric] = useState<Metric>("xgi90");
 
   const rows = useMemo(() => {
     if (res.status !== "ok") return [];
@@ -47,26 +49,26 @@ export default function PlayersPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search player or club"
-          className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-emerald-500"
+          className="w-56 rounded-xl border border-line bg-cream px-3 py-2 text-sm shadow-sm outline-none focus:border-gold"
           aria-label="Search"
         />
-        <div className="inline-flex rounded-xl bg-slate-100 p-1 text-sm" role="group" aria-label="Position">
+        <div className="inline-flex rounded-xl bg-sand-deep p-1 text-sm" role="group" aria-label="Position">
           {POSITIONS.map((p) => (
             <button
               key={p}
               onClick={() => setPos(p)}
-              className={`rounded-lg px-3 py-1.5 font-medium ${pos === p ? "bg-white shadow-sm" : "text-slate-600"}`}
+              className={`rounded-lg px-3 py-1.5 font-medium ${pos === p ? "bg-cream shadow-sm" : "text-ink-soft"}`}
             >
               {p === "ALL" ? "All" : p}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
           Min. minutes
           <select
             value={minMins}
             onChange={(e) => setMinMins(Number(e.target.value))}
-            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            className="rounded-lg border border-line bg-cream px-2 py-1.5"
           >
             {MIN_MINUTES.map((m) => (
               <option key={m} value={m}>
@@ -75,18 +77,32 @@ export default function PlayersPage() {
             ))}
           </select>
         </label>
-        <span className="ml-auto text-xs text-slate-500">{rows.length} players</span>
+        <span className="ml-auto text-xs text-muted">{rows.length} players</span>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold">Plot</span>
+        {(Object.keys(METRICS) as Metric[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMetric(m)}
+            className={`rounded-lg px-3 py-1.5 ${metric === m ? "bg-espresso text-cream" : "bg-sand-deep text-ink-soft"}`}
+          >
+            {METRICS[m].label}
+          </button>
+        ))}
+        <span className="text-xs text-muted">against price, by position. Click a dot for the player.</span>
+      </div>
+      <PositionPlots players={rows} metric={metric} />
+      <div className="overflow-x-auto rounded-2xl bg-cream shadow-sm ring-1 ring-line">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="bg-sand text-xs uppercase tracking-wider text-muted">
             <tr>
               <th className="px-3 py-2.5 text-left">Player</th>
               {COLUMNS.map((c) => (
                 <th key={c.key} className="px-3 py-2.5 text-right" title={c.title}>
                   <button
                     onClick={() => setSort((s) => ({ key: c.key, desc: s.key === c.key ? !s.desc : true }))}
-                    className={`uppercase ${sort.key === c.key ? "text-slate-900" : ""}`}
+                    className={`uppercase ${sort.key === c.key ? "text-ink" : ""}`}
                   >
                     {c.label}
                     {sort.key === c.key ? (sort.desc ? " ↓" : " ↑") : ""}
@@ -95,14 +111,14 @@ export default function PlayersPage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {rows.slice(0, 200).map((r) => (
-              <tr key={r.element_id} className="hover:bg-slate-50">
+              <tr key={r.element_id} className="hover:bg-sand">
                 <td className="px-3 py-2">
-                  <Link href={`/stats/players/${r.element_id}`} className="font-semibold hover:text-emerald-700">
+                  <Link href={`/stats/players/${r.element_id}`} className="font-semibold hover:text-gold-deep">
                     {r.name}
                   </Link>
-                  <span className="ml-2 text-xs text-slate-500">
+                  <span className="ml-2 text-xs text-muted">
                     {r.team} · {r.position}
                   </span>
                 </td>

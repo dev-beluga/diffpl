@@ -12,16 +12,16 @@ export default function TeamsPage() {
   const teams = res.data;
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <section className="rounded-2xl bg-cream p-5 shadow-sm ring-1 ring-line">
         <h2 className="font-bold">Attack vs defence, last 5 matches</h2>
-        <p className="text-sm text-slate-500">Team xG is the sum of its players&apos; xG. Dashed lines: league average.</p>
+        <p className="text-sm text-muted">Team xG is the sum of its players&apos; xG. Dashed lines: league average.</p>
         <div className="mt-3">
           <TeamScatter teams={teams} />
         </div>
       </section>
-      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <section className="overflow-hidden rounded-2xl bg-cream shadow-sm ring-1 ring-line">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="bg-sand text-xs uppercase tracking-wider text-muted">
             <tr>
               <th className="px-3 py-2.5 text-left">Team</th>
               <th className="px-3 py-2.5 text-right">xG</th>
@@ -30,7 +30,7 @@ export default function TeamsPage() {
               <th className="px-3 py-2.5 text-right">GA</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {[...teams]
               .sort((a, b) => b.xg_for - b.xg_against - (a.xg_for - a.xg_against))
               .map((t) => (
@@ -44,7 +44,7 @@ export default function TeamsPage() {
               ))}
           </tbody>
         </table>
-        <p className="px-3 py-2 text-xs text-slate-500">Per match, last 5. Sorted by xG difference.</p>
+        <p className="px-3 py-2 text-xs text-muted">Per match, last 5. Sorted by xG difference.</p>
       </section>
     </div>
   );

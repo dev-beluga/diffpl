@@ -75,14 +75,14 @@ export function Bars({
       </svg>
       {hover !== null && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-lg"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-espresso px-2.5 py-1.5 text-xs text-white shadow-lg"
           style={{
             left: `${((PAD.left + band * hover + band / 2) / W) * 100}%`,
             top: `${(y(Math.max(bars[hover].value, 0)) / height) * 100}%`,
           }}
         >
           <div className="font-semibold tabular-nums">{format(bars[hover].value)}</div>
-          <div className="text-slate-300">{bars[hover].tip}</div>
+          <div className="text-gold-soft">{bars[hover].tip}</div>
         </div>
       )}
     </div>

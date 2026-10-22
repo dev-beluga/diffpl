@@ -4,7 +4,15 @@ import { PlayerCard } from "./PlayerCard";
 const ROWS: Position[] = ["GKP", "DEF", "MID", "FWD"];
 
 // Half a pitch seen from behind the goal, goalkeeper at the top, as on the FPL team page.
-export function Pitch({ starters, bench }: { starters: Player[]; bench: Player[] }) {
+export function Pitch({
+  starters,
+  bench,
+  onSelect,
+}: {
+  starters: Player[];
+  bench: Player[];
+  onSelect?: (id: number) => void;
+}) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-2xl shadow-xl ring-1 ring-black/10">
@@ -12,7 +20,7 @@ export function Pitch({ starters, bench }: { starters: Player[]; bench: Player[]
           className="absolute inset-0"
           style={{
             background:
-              "repeating-linear-gradient(180deg, #2f9e57 0px, #2f9e57 56px, #2a9150 56px, #2a9150 112px)",
+              "repeating-linear-gradient(180deg, var(--color-pitch) 0px, var(--color-pitch) 56px, var(--color-pitch-alt) 56px, var(--color-pitch-alt) 112px)",
           }}
         />
         <Markings />
@@ -22,19 +30,19 @@ export function Pitch({ starters, bench }: { starters: Player[]; bench: Player[]
               {starters
                 .filter((p) => p.position === pos)
                 .map((p) => (
-                  <PlayerCard key={p.element_id} player={p} />
+                  <PlayerCard key={p.element_id} player={p} onSelect={onSelect} />
                 ))}
             </div>
           ))}
         </div>
       </div>
-      <div className="rounded-2xl bg-slate-100 p-3 ring-1 ring-slate-200">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Bench</div>
+      <div className="rounded-2xl bg-sand-deep p-3 ring-1 ring-line">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Bench</div>
         <div className="flex justify-around gap-1 sm:gap-4">
           {bench.map((p, i) => (
             <div key={p.element_id} className="flex flex-col items-center gap-1">
-              <span className="text-[10px] font-semibold text-slate-400">{i === 0 ? "GK" : i}</span>
-              <PlayerCard player={p} bench />
+              <span className="text-[10px] font-semibold text-muted">{i === 0 ? "GK" : i}</span>
+              <PlayerCard player={p} bench onSelect={onSelect} />
             </div>
           ))}
         </div>
