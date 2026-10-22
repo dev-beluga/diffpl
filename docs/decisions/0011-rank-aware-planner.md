@@ -1,6 +1,6 @@
 # ADR-0011: Rank-aware planner, P(beat a rival)
 
-Status: rejected (failed its eval gate on 2024-25; kept on branch phase3-rank-aware)
+Status: rejected (v1 and v2 both failed the eval gate; kept on branch phase3-rank-aware)
 Date: 2026-10-20
 
 ## Context
@@ -70,6 +70,28 @@ Likely causes, to test before a retry:
 - One rival and two seasons: a 0.04 gap is about 1.5 GWs, inside the noise of 37 GWs.
 
 Next options: score P(win this GW) to match the metric, or use the draws for captaincy only.
+
+### v2: P(beat rival this GW), within 2 EV points (2026-10-22)
+
+v2 scores each plan on the coming GW only (matching the h2h metric) and chooses only among
+plans whose horizon objective is within EV_SLACK = 2.0 of the best.
+
+Earlier v2 runs looked like a pass, but the replay was not reproducible. Three causes, fixed on
+main: a 20 s wall-clock solve limit that HiGHS counts across every re-solve of one model, club
+constraints built from a set whose order follows per-process string hashing, and no
+deterministic stop for hard solves (now a 500-node cap). Two runs under PYTHONHASHSEED 1 and 2
+now give identical tables, and no solve hit the node cap.
+
+| Season  | Manager    | Points | Rival points | h2h   | Hits |
+|---------|------------|--------|--------------|-------|------|
+| 2024-25 | planner    | 2186   | 2081         | 0.526 | 144  |
+| 2024-25 | rank_aware | 2210   | 2081         | 0.579 | 108  |
+| 2025-26 | planner    | 2195   | 2108         | 0.513 | 76   |
+| 2025-26 | rank_aware | 2158   | 2108         | 0.500 | 48   |
+
+v2 wins 2024-25 (+0.053 h2h, +24 points) and loses 2025-26 (-0.013 h2h, -37 points), so it
+fails the both-seasons gate. On two seasons and one rival, the rank-aware layer is not
+distinguishable from the EV planner. The EV planner stays the shipped planner (ADR-0010).
 
 The EV planner here scores 2167 in 2024-25, not ADR-0010's 2186: this eval loads the registry
 champion, while ADR-0010's replay trained a fresh two-part model.
