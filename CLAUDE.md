@@ -186,4 +186,6 @@ Phase 4.
 - Models: `uv run python -m diffpl.models train` (MLflow) and `uv run python -m diffpl.models replay`
 - Promote: `uv run python -m diffpl.models promote [--version N]` (gate in ADR-0007)
 - Dashboard: `uv run streamlit run src/diffpl/ui/app.py`
-- (Add as they exist: evals, serve.)
+- Team news eval: `uv run python -m diffpl.nlp eval [--parser rules|hybrid]` (hybrid needs Ollama with `qwen2.5:3b`)
+- MCP tools for a team's next deadline: `uv run python -m diffpl.mcp serve --team <team_id>`
+- (Add as they exist: serve.)
