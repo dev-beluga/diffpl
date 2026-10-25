@@ -114,7 +114,7 @@ class News:
     as_of: datetime  # when the text was published or fetched
 
 
-def _next_occurrence(day: int, month: int, as_of: date) -> date | None:
+def next_occurrence(day: int, month: int, as_of: date) -> date | None:
     for year in (as_of.year, as_of.year + 1):
         try:
             d = date(year, month, day)
@@ -140,7 +140,7 @@ def _injury_type(text: str) -> str | None:
 def _return_date(text: str, as_of: datetime) -> date | None:
     m = DATE_TEXT.search(text)
     if m and m.group(2).lower() in MONTHS:
-        return _next_occurrence(int(m.group(1)), MONTHS[m.group(2).lower()], as_of.date())
+        return next_occurrence(int(m.group(1)), MONTHS[m.group(2).lower()], as_of.date())
     m = DURATION.search(text)
     if m:
         n = int(m.group(1)) if m.group(1).isdigit() else NUMBER_WORDS[m.group(1).lower()]
