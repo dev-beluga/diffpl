@@ -9,12 +9,12 @@ The agent's decision is not a tool; the agent loop returns it and the harness va
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import polars as pl
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, validate_call
 
 from diffpl.nlp.news import parse_news
 from diffpl.optim.planner import Projection, Projector, plans
@@ -258,3 +258,36 @@ TOOL_NAMES: Mapping[str, str] = {
     "check_decision": "dry-run a decision",
     "analyze_news": "read team news text",
 }
+
+
+class UnknownTool(LookupError):
+    """The agent named a tool that does not exist."""
+
+
+class BadArguments(ValueError):
+    """The agent's arguments did not match the tool's signature."""
+
+
+FUNCTIONS: Mapping[str, Callable[..., dict[str, Any]]] = {
+    "squad": squad,
+    "search_players": search_players,
+    "get_player": get_player,
+    "get_fixtures": get_fixtures,
+    "plan_transfers": plan_transfers,
+    "check_decision": check_decision,
+    "analyze_news": analyze_news,
+}
+_CONFIG = ConfigDict(arbitrary_types_allowed=True)
+_VALIDATED = {name: validate_call(config=_CONFIG)(fn) for name, fn in FUNCTIONS.items()}
+
+
+def dispatch(ctx: ToolContext, name: str, args: Mapping[str, Any]) -> dict[str, Any]:
+    """Run a tool by name with arguments validated against its signature. The MCP server wraps
+    the same functions, so an agent run in-process sees what an MCP client would."""
+    if name not in _VALIDATED:
+        raise UnknownTool(name)
+    try:
+        result: dict[str, Any] = _VALIDATED[name](ctx, **args)
+    except (ValidationError, TypeError) as exc:
+        raise BadArguments(str(exc)) from exc
+    return result

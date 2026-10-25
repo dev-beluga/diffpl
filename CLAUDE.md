@@ -188,4 +188,5 @@ Phase 4.
 - Dashboard: `uv run streamlit run src/diffpl/ui/app.py`
 - Team news eval: `uv run python -m diffpl.nlp eval [--parser rules|hybrid]` (hybrid needs Ollama with `qwen2.5:3b`)
 - MCP tools for a team's next deadline: `uv run python -m diffpl.mcp serve --team <team_id>`
+- Agent season: `uv run python -m diffpl.agents run --agent planner --season 2024-25 [--out DIR]`
 - (Add as they exist: serve.)
