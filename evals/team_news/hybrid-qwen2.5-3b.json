@@ -1,0 +1,130 @@
+{
+  "fpl": {
+    "status": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 32
+    },
+    "chance": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 31
+    },
+    "injury_type": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 21
+    },
+    "return_date": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 9
+    },
+    "return_unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 5
+    }
+  },
+  "injection": {
+    "status": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 6
+    },
+    "chance": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 4
+    },
+    "injury_type": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 4
+    },
+    "return_date": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 2
+    },
+    "return_unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 0
+    }
+  },
+  "press_blind": {
+    "status": {
+      "precision": 0.8667,
+      "recall": 0.8667,
+      "f1": 0.8667,
+      "n": 15
+    },
+    "chance": {
+      "precision": 0.875,
+      "recall": 0.7778,
+      "f1": 0.8235,
+      "n": 9
+    },
+    "injury_type": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 6
+    },
+    "return_date": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 2
+    },
+    "return_unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 0
+    }
+  },
+  "press_dev": {
+    "status": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 16
+    },
+    "chance": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 8
+    },
+    "injury_type": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 8
+    },
+    "return_date": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 5
+    },
+    "return_unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 1
+    }
+  }
+}

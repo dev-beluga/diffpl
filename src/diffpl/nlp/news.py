@@ -103,6 +103,28 @@ UNKNOWN_RETURN = re.compile(
 )
 
 
+# Sentences that address the reader or the system instead of describing a player. They are
+# dropped before any rule or model reads the text, and the result carries an "injection" flag.
+INJECTION = re.compile(
+    r"\bignore\b[^.!?]{0,60}\b(?:instructions?|prompts?|rules?|news|above|previous|everything)\b"
+    r"|\b(?:disregard|forget)\b[^.!?]{0,40}\b(?:instructions?|previous|above)\b"
+    r"|^\s*(?:system|assistant|developer|user)\s*:"
+    r"|\b(?:you are|act as|pretend|test mode|new instruction)\b"
+    r"|\b(?:mark|report|classify|label|set|output|respond|answer|return)\b[^.!?]{0,30}"
+    r"\b(?:this|the|that|every) (?:player|status|result|output|json)\b"
+    r"|</?\s*news\s*>|\bjson\b|\bprompt\b",
+    re.I,
+)
+SENTENCES = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def strip_instructions(text: str) -> tuple[str, bool]:
+    """The text without instruction-like sentences, and whether any were removed."""
+    parts = [s.strip() for s in SENTENCES.split(text) if s.strip()]
+    kept = [s for s in parts if not INJECTION.search(s)]
+    return " ".join(kept), len(kept) != len(parts)
+
+
 @dataclass(frozen=True)
 class News:
     status: Status
@@ -112,6 +134,7 @@ class News:
     return_unknown: bool
     quote: str  # the text the status was read from
     as_of: datetime  # when the text was published or fetched
+    flags: tuple[str, ...] = ()  # "injection": instruction-like sentences were dropped
 
 
 def next_occurrence(day: int, month: int, as_of: date) -> date | None:
@@ -150,9 +173,13 @@ def _return_date(text: str, as_of: datetime) -> date | None:
 
 def parse_news(text: str | None, as_of: datetime) -> News:
     """Read one news string. Empty text means no news, so the player is available."""
-    clean = (text or "").strip()
-    if not clean:
+    raw = (text or "").strip()
+    if not raw:
         return News("available", None, None, None, False, "", as_of)
+    clean, flagged = strip_instructions(raw)
+    flags = ("injection",) if flagged else ()
+    if not clean:  # nothing but instructions: say nothing about the player
+        return News("unknown", None, None, None, False, raw, as_of, flags)
 
     def result(status: Status, chance: int | None, typed: bool, dated: bool) -> News:
         return News(
@@ -163,6 +190,7 @@ def parse_news(text: str | None, as_of: datetime) -> News:
             status == "injured" and bool(UNKNOWN_RETURN.search(clean)),
             clean,
             as_of,
+            flags,
         )
 
     if UNAVAILABLE.search(clean):
@@ -181,4 +209,4 @@ def parse_news(text: str | None, as_of: datetime) -> News:
         return result("available", None, False, False)
     if INJURY.search(clean):
         return result("injured", 0, True, True)
-    return News("unknown", None, None, None, False, clean, as_of)
+    return News("unknown", None, None, None, False, clean, as_of, flags)

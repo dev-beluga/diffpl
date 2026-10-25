@@ -31,6 +31,38 @@
       "n": 5
     }
   },
+  "injection": {
+    "status": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 6
+    },
+    "chance": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 4
+    },
+    "injury_type": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 4
+    },
+    "return_date": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 2
+    },
+    "return_unknown": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "n": 0
+    }
+  },
   "press_blind": {
     "status": {
       "precision": 0.5333,
