@@ -189,4 +189,5 @@ Phase 4.
 - Team news eval: `uv run python -m diffpl.nlp eval [--parser rules|hybrid]` (hybrid needs Ollama with `qwen2.5:3b`)
 - MCP tools for a team's next deadline: `uv run python -m diffpl.mcp serve --team <team_id>`
 - Agent season: `uv run python -m diffpl.agents run --agent planner --season 2024-25 [--out DIR]`
+- LLM agent (free, local): `uv run python -m diffpl.agents run --agent ollama --season 2024-25 --gws 6 --out DIR`
 - (Add as they exist: serve.)

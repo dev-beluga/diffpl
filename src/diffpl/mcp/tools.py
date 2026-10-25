@@ -9,12 +9,13 @@ The agent's decision is not a tool; the agent loop returns it and the harness va
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, get_type_hints
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, validate_call
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model, validate_call
 
 from diffpl.nlp.news import parse_news
 from diffpl.optim.planner import Projection, Projector, plans
@@ -291,3 +292,19 @@ def dispatch(ctx: ToolContext, name: str, args: Mapping[str, Any]) -> dict[str, 
     except (ValidationError, TypeError) as exc:
         raise BadArguments(str(exc)) from exc
     return result
+
+
+def input_schemas() -> dict[str, dict[str, Any]]:
+    """JSON schema of each tool's arguments (the context is not an argument), for LLM clients."""
+    out: dict[str, dict[str, Any]] = {}
+    for name, fn in FUNCTIONS.items():
+        hints = get_type_hints(fn)
+        fields: dict[str, Any] = {}
+        for p in list(inspect.signature(fn).parameters.values())[1:]:
+            default = ... if p.default is inspect.Parameter.empty else p.default
+            fields[p.name] = (hints[p.name], default)
+        model = create_model(name, __config__=ConfigDict(arbitrary_types_allowed=True), **fields)
+        schema = model.model_json_schema()
+        schema.pop("title", None)
+        out[name] = schema
+    return out
