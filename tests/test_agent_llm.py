@@ -55,3 +55,39 @@ def test_a_text_only_reply_is_an_agent_error_not_a_crash() -> None:
     ctx = context()
     out = run_decision(OllamaAgent("m", fake([bad], [])), LiveTools(ctx), ctx)
     assert not out.valid and out.kinds() == ["agent_error"]
+
+
+def test_inline_refs_removes_defs_for_hosted_apis() -> None:
+    from diffpl.agents.llm import inline_refs
+
+    spec = next(s for s in tool_specs() if s["function"]["name"] == SUBMIT)["function"]
+    flat = inline_refs(spec)
+    assert "$ref" not in json.dumps(flat) and "$defs" not in json.dumps(flat)
+
+
+def test_openai_compat_agent_round_trip_sends_tool_call_ids() -> None:
+    from diffpl.agents.llm import OpenAICompatAgent
+
+    def msg(name: str, args: dict[str, Any]) -> dict[str, Any]:
+        call = {
+            "id": "c1",
+            "type": "function",
+            "function": {"name": name, "arguments": json.dumps(args)},
+        }
+        return {
+            "choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [call]}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+        }
+
+    seen: list[dict[str, Any]] = []
+    queue = iter([msg("squad", {}), msg(SUBMIT, good_decision().model_dump())])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json=next(queue))
+
+    client = httpx.Client(base_url="http://x/", transport=httpx.MockTransport(handler))
+    ctx = context()
+    out = run_decision(OpenAICompatAgent("m", "k", client), LiveTools(ctx), ctx)
+    assert out.valid and out.usage.tokens == 120
+    assert seen[1]["messages"][-1]["tool_call_id"] == "c1"

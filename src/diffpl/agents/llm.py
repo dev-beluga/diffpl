@@ -93,3 +93,83 @@ class OllamaAgent:
         if fn["name"] == SUBMIT:
             return Submit(args), usage
         return ToolCall(fn["name"], args), usage
+
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+
+def inline_refs(schema: Any, defs: dict[str, Any] | None = None) -> Any:
+    """Replace `$ref` with the referenced definition: hosted APIs reject `$defs`."""
+    if isinstance(schema, dict):
+        defs = {**(defs or {}), **schema.get("$defs", {})}
+        if "$ref" in schema:
+            return inline_refs(defs[schema["$ref"].rsplit("/", 1)[-1]], defs)
+        return {k: inline_refs(v, defs) for k, v in schema.items() if k != "$defs"}
+    if isinstance(schema, list):
+        return [inline_refs(v, defs) for v in schema]
+    return schema
+
+
+class OpenAICompatAgent:
+    """Tool-calling loop over an OpenAI-style /chat/completions endpoint (Gemini's free tier).
+
+    The API key is read by the caller from the environment and goes only into the auth header.
+    """
+
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        client: httpx.Client | None = None,
+        base_url: str = GEMINI_URL,
+    ) -> None:
+        self.model = model
+        self.name = f"api_{model}"
+        self.client = client or httpx.Client(
+            base_url=base_url, timeout=120.0, headers={"Authorization": f"Bearer {api_key}"}
+        )
+        self.system = PROMPT.read_text(encoding="utf-8")
+        self.specs = [
+            {"type": "function", "function": inline_refs(s["function"])} for s in tool_specs()
+        ]
+        self.messages: list[dict[str, Any]] = []
+        self._call_id = ""
+
+    def start(self, brief: Brief) -> None:
+        user = (
+            f"Gameweek {brief.gw}, deadline {brief.deadline}. "
+            f"You have {brief.budget.max_steps} steps."
+        )
+        self.messages = [
+            {"role": "system", "content": self.system},
+            {"role": "user", "content": user},
+        ]
+
+    def next(self, observation: dict[str, Any] | None) -> tuple[Action, Usage]:
+        if observation is not None:
+            text = json.dumps(observation, default=str)[:MAX_RESULT_CHARS]
+            self.messages.append({"role": "tool", "tool_call_id": self._call_id, "content": text})
+        body = {
+            "model": self.model,
+            "tools": self.specs,
+            "tool_choice": "required",
+            "temperature": 0,
+            "messages": self.messages,
+        }
+        resp = self.client.post("chat/completions", json=body)
+        resp.raise_for_status()
+        payload = resp.json()
+        u = payload.get("usage") or {}
+        usage = Usage(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), 0.0)
+        message = payload["choices"][0]["message"]
+        calls = message.get("tool_calls") or []
+        if not calls:
+            raise ValueError("model made no tool call")
+        self.messages.append(message)
+        call = calls[0]
+        self._call_id = call.get("id", "")
+        fn = call["function"]
+        args = json.loads(fn.get("arguments") or "{}")
+        if fn["name"] == SUBMIT:
+            return Submit(args), usage
+        return ToolCall(fn["name"], args), usage

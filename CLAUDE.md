@@ -190,4 +190,5 @@ Phase 4.
 - MCP tools for a team's next deadline: `uv run python -m diffpl.mcp serve --team <team_id>`
 - Agent season: `uv run python -m diffpl.agents run --agent planner --season 2024-25 [--out DIR]`
 - LLM agent (free, local): `uv run python -m diffpl.agents run --agent ollama --season 2024-25 --gws 6 --out DIR`
+- LLM agent (Gemini free tier): set `DIFFPL_GEMINI_API_KEY` in `.env`, then `uv run python -m diffpl.agents run --agent gemini --model <model> --season 2024-25 --gws 6 --out DIR`
 - (Add as they exist: serve.)

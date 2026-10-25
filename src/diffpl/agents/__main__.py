@@ -14,13 +14,15 @@ from dataclasses import replace
 from pathlib import Path
 
 from diffpl.agents.harness import Agent
-from diffpl.agents.llm import OllamaAgent
+from diffpl.agents.llm import OllamaAgent, OpenAICompatAgent
 from diffpl.agents.manager import AgentManager
 from diffpl.agents.scripted import PlannerAgent
+from diffpl.settings import get_settings
 
 AGENTS: dict[str, Callable[[str], Agent]] = {
     "planner": lambda model: PlannerAgent(),
     "ollama": OllamaAgent,
+    "gemini": lambda model: OpenAICompatAgent(model, get_settings().gemini_api_key),
 }
 
 
@@ -66,7 +68,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     run = sub.add_parser("run", help="play one season with an agent")
     run.add_argument("--agent", choices=sorted(AGENTS), required=True)
     run.add_argument("--season", required=True)
-    run.add_argument("--model", default="qwen2.5:3b", help="Ollama model for --agent ollama")
+    run.add_argument(
+        "--model", default="qwen2.5:3b", help="model name for --agent ollama or gemini"
+    )
     run.add_argument("--gws", type=int, help="play only the first N gameweeks")
     run.add_argument("--out", type=Path, help="write trajectories (JSON lines) here")
     args = parser.parse_args(argv)
