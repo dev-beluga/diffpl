@@ -97,6 +97,7 @@ class OllamaAgent:
 
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+OPENAI_URL = "https://api.openai.com/v1/"
 GROQ_URL = "https://api.groq.com/openai/v1/"
 RETRIES = 5  # on HTTP 429 (free tiers cap requests and tokens per minute)
 MAX_WAIT = 60.0
@@ -129,8 +130,10 @@ class OpenAICompatAgent:
         api_key: str,
         client: httpx.Client | None = None,
         base_url: str = GEMINI_URL,
+        temperature: float | None = 0.0,  # None: omit it (some models accept only the default)
     ) -> None:
         self.model = model
+        self.temperature = temperature
         self.name = f"api_{model}"
         self.client = client or httpx.Client(
             base_url=base_url, timeout=120.0, headers={"Authorization": f"Bearer {api_key}"}
@@ -162,13 +165,14 @@ class OpenAICompatAgent:
             text = json.dumps(observation, default=str)[:MAX_RESULT_CHARS]
             self.messages.append({"role": "tool", "tool_call_id": self._call_id, "content": text})
             self._prune()
-        body = {
+        body: dict[str, Any] = {
             "model": self.model,
             "tools": self.specs,
             "tool_choice": "required",
-            "temperature": 0,
             "messages": self.messages,
         }
+        if self.temperature is not None:
+            body["temperature"] = self.temperature
         for attempt in range(RETRIES + 1):
             resp = self.client.post("chat/completions", json=body)
             if resp.status_code != 429 or attempt == RETRIES:
