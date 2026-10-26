@@ -191,4 +191,5 @@ Phase 6 (agent league deferred: no usable free LLM key yet).
 - Agent season: `uv run python -m diffpl.agents run --agent planner --season 2024-25 [--out DIR]`
 - LLM agent (free, local): `uv run python -m diffpl.agents run --agent ollama --season 2024-25 --gws 6 --out DIR`
 - LLM agent (Gemini free tier): set `DIFFPL_GEMINI_API_KEY` in `.env`, then `uv run python -m diffpl.agents run --agent gemini --model <model> --season 2024-25 --gws 6 --out DIR`
+- Daily pipeline: `uv run python flows/daily.py [--no-players] [--serve]` (metrics in `ops/metrics/diffpl.prom`)
 - (Add as they exist: serve.)

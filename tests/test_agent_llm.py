@@ -97,7 +97,7 @@ def test_rate_limit_is_retried_then_succeeds(monkeypatch: Any) -> None:
     from diffpl.agents import llm
 
     sleeps: list[float] = []
-    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    monkeypatch.setattr("time.sleep", sleeps.append)
     call = {"id": "c", "type": "function", "function": {"name": "squad", "arguments": "{}"}}
     ok = {"choices": [{"message": {"role": "assistant", "tool_calls": [call]}}]}
     replies = iter(
