@@ -14,7 +14,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from diffpl.agents.harness import Agent
-from diffpl.agents.llm import OllamaAgent, OpenAICompatAgent
+from diffpl.agents.llm import GROQ_URL, OllamaAgent, OpenAICompatAgent
 from diffpl.agents.manager import AgentManager
 from diffpl.agents.scripted import PlannerAgent
 from diffpl.settings import get_settings
@@ -22,6 +22,7 @@ from diffpl.settings import get_settings
 AGENTS: dict[str, Callable[[str], Agent]] = {
     "planner": lambda model: PlannerAgent(),
     "ollama": OllamaAgent,
+    "groq": lambda model: OpenAICompatAgent(model, get_settings().groq_api_key, base_url=GROQ_URL),
     "gemini": lambda model: OpenAICompatAgent(model, get_settings().gemini_api_key),
 }
 

@@ -8,6 +8,7 @@ so a weak model costs points through fallbacks, not through illegal squads.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ from diffpl.mcp import tools
 PROMPT = Path(__file__).resolve().parents[3] / "prompts" / "agent_v1.txt"
 HOST = "http://localhost:11434"
 SEED = 42
-MAX_RESULT_CHARS = 6000  # a tool result is cut here so a long list cannot fill the context
+MAX_RESULT_CHARS = 3000  # a tool result is cut here so a long list cannot fill the context
 SUBMIT = "submit_decision"
 
 
@@ -96,6 +97,12 @@ class OllamaAgent:
 
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+GROQ_URL = "https://api.groq.com/openai/v1/"
+RETRIES = 5  # on HTTP 429 (free tiers cap requests and tokens per minute)
+MAX_WAIT = 60.0
+KEEP_RESULTS = (
+    2  # older tool results are dropped from the history: free tiers cap tokens per minute
+)
 
 
 def inline_refs(schema: Any, defs: dict[str, Any] | None = None) -> Any:
@@ -145,10 +152,16 @@ class OpenAICompatAgent:
             {"role": "user", "content": user},
         ]
 
+    def _prune(self) -> None:
+        tool = [m for m in self.messages if m["role"] == "tool"]
+        for m in tool[:-KEEP_RESULTS]:
+            m["content"] = "[earlier result dropped]"
+
     def next(self, observation: dict[str, Any] | None) -> tuple[Action, Usage]:
         if observation is not None:
             text = json.dumps(observation, default=str)[:MAX_RESULT_CHARS]
             self.messages.append({"role": "tool", "tool_call_id": self._call_id, "content": text})
+            self._prune()
         body = {
             "model": self.model,
             "tools": self.specs,
@@ -156,8 +169,16 @@ class OpenAICompatAgent:
             "temperature": 0,
             "messages": self.messages,
         }
-        resp = self.client.post("chat/completions", json=body)
-        resp.raise_for_status()
+        for attempt in range(RETRIES + 1):
+            resp = self.client.post("chat/completions", json=body)
+            if resp.status_code != 429 or attempt == RETRIES:
+                break
+            wait = float(resp.headers.get("retry-after") or 2**attempt * 5)
+            time.sleep(min(wait, MAX_WAIT))
+        if resp.is_error:  # the body says why (bad schema, rate limit); it holds no secrets
+            raise httpx.HTTPStatusError(
+                f"{resp.status_code}: {resp.text[:300]}", request=resp.request, response=resp
+            )
         payload = resp.json()
         u = payload.get("usage") or {}
         usage = Usage(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), 0.0)

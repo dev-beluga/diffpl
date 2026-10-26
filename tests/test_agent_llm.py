@@ -91,3 +91,26 @@ def test_openai_compat_agent_round_trip_sends_tool_call_ids() -> None:
     out = run_decision(OpenAICompatAgent("m", "k", client), LiveTools(ctx), ctx)
     assert out.valid and out.usage.tokens == 120
     assert seen[1]["messages"][-1]["tool_call_id"] == "c1"
+
+
+def test_rate_limit_is_retried_then_succeeds(monkeypatch: Any) -> None:
+    from diffpl.agents import llm
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(llm.time, "sleep", sleeps.append)
+    call = {"id": "c", "type": "function", "function": {"name": "squad", "arguments": "{}"}}
+    ok = {"choices": [{"message": {"role": "assistant", "tool_calls": [call]}}]}
+    replies = iter(
+        [httpx.Response(429, headers={"retry-after": "3"}), httpx.Response(200, json=ok)]
+    )
+    client = httpx.Client(
+        base_url="http://x/", transport=httpx.MockTransport(lambda r: next(replies))
+    )
+    agent = llm.OpenAICompatAgent("m", "k", client)
+    agent.start(
+        __import__("diffpl.agents.harness", fromlist=["Brief"]).Brief(
+            2, "d", {}, __import__("diffpl.agents.harness", fromlist=["Budget"]).Budget()
+        )
+    )
+    action, _ = agent.next(None)
+    assert action.name == "squad" and sleeps == [3.0]  # type: ignore[union-attr]

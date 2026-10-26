@@ -35,3 +35,19 @@ The harness did its job: no illegal squad, every failure classified, season stay
   OpenAI-style client), or Colab/Kaggle for a 7B+ model. Both fit the same `Agent` protocol.
 - League tables must show valid-decision counts beside points (this run scores 336 with no
   valid decision).
+
+## Hosted free tier: Groq gpt-oss-120b (same 6 GWs, 5 decisions)
+
+`OpenAICompatAgent` (OpenAI-style endpoint, retry on 429, key from env only) with
+`openai/gpt-oss-120b` on Groq's free tier (8k tokens per minute, 200k per day):
+
+- Run 1, full history: 2 of 5 valid, 353 points. The 3 others died on HTTP 413 (request over the
+  per-minute token cap) and one 400.
+- Run 2, only the last 2 tool results kept in the history: 0 of 5 valid, 336 points. The agent
+  forgot what it had read, called `squad` again and again, and hit the 8-step limit (4 budget
+  overruns). One 400 `tool_use_failed`: the model wrote a malformed tool name.
+- About 100k tokens and 120 s per 5 decisions in both runs. Two runs used about the daily cap.
+
+Reading: a free tier fits a short loop, not an 8-step exploration. The agent spends its steps
+re-reading data. Next design: give the first message the squad and the planner's best plan, so
+a decision takes 1 to 3 steps.
