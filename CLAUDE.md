@@ -158,8 +158,8 @@ docs/decisions/   # ADRs, one per major choice
 - [x] Phase 1: Season Replay Env, baseline managers (template, form, fixtures), metrics, leakage tests in CI
 - [x] Phase 2: projections (baseline, LightGBM, probabilistic), calibration report, MLflow registry, champion/challenger
 - [x] Phase 3: simulator, MILP multi-GW planner (ships); rank-aware objective tried twice, rejected by its eval gate (ADR-0011)
-- [ ] Phase 4: team-news NLP, golden set, eval harness in CI, prompt-injection tests
-- [ ] Phase 5: MCP server, agents, agent harness, Langfuse tracing, agent league, model and cost comparison
+- [x] Phase 4: team-news NLP, golden set, eval harness in CI, prompt-injection tests
+- [ ] Phase 5: MCP server, agent harness (done); LLM agents tried on local, Groq free tier (ADR-0018), none valid yet; Langfuse tracing, agent league, cost comparison deferred
 - [ ] Phase 6: Prefect orchestration, Prometheus and Grafana, drift reports, alerts
 - [ ] Phase 7: FastAPI and UI, FPL ID import, decision review, rival modeling, k3d plus Helm deploy
 - [ ] Phase 8 (optional): computer vision spike
@@ -173,7 +173,7 @@ docs/decisions/   # ADRs, one per major choice
 
 ## Current phase
 
-Phase 4.
+Phase 6 (agent league deferred: no usable free LLM key yet).
 
 ## Commands
 
